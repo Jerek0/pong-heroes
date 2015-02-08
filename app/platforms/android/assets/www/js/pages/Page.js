@@ -8,7 +8,7 @@ var Page = function() {
 }
 // Héritage de CustomEventDispatcher
 Page.prototype = new CustomEventDispatcher();
-Page.prototype.constructor = Page;
+Page.prototype.constructor = CustomEventDispatcher;
 
 Page.prototype.setTemplateUrl = function(value) {
     this.templateUrl = value;

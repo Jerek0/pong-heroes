@@ -3,8 +3,8 @@ var PageManager = require('./pages/PageManager');
 
 var app = {
     initialize: function() {
-        //this.bindEvents();
-        this.onDeviceReady();
+        this.bindEvents();
+        //this.onDeviceReady();
     },
 
     bindEvents: function() {
@@ -43,12 +43,8 @@ CustomEventDispatcher.prototype.addEventListener= function(type, listener, useCa
 CustomEventDispatcher.prototype.removeEventListener= function(type, listener, useCapture) {
     var listeners= this._getListeners(type, useCapture);
     var ix= listeners.indexOf(listener);
-    console.log(listeners);
-    console.log(ix);
     if (ix!==-1)
         listeners.splice(ix, 1);
-    console.log(listeners);
-    console.log('######');
 };
 
 CustomEventDispatcher.prototype.dispatchEvent= function(evt) {
@@ -65,34 +61,16 @@ module.exports = CustomEventDispatcher;
  */
 
 var Page = require('./Page');
-var TestPage = require('./TestPage');
 
 var HomePage = function() {
-    // Functions handlers
-    this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
-
-    this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
     this.setTemplateUrl('templates/home.html');
-};
-
+}
 // Héritage de Page
 HomePage.prototype = new Page();
 HomePage.prototype.constructor = HomePage;
 
-HomePage.prototype.onPageDisplayed = function() {
-    console.log('HomePage template displayed');
-    this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
-    
-    var scope = this;
-    var btnPlay = document.getElementById("btn-play");
-    btnPlay.addEventListener('click', function() {
-        console.log(TestPage);
-        scope.dispatchEvent({ type: 'changePage', newPage: new TestPage() });
-    });
-};
-
 module.exports = HomePage;
-},{"./Page":4,"./TestPage":6}],4:[function(require,module,exports){
+},{"./Page":4}],4:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -101,16 +79,15 @@ var CustomEventDispatcher = require('../events/CustomEventDispatcher');
 var Page = function() {
     this.templateUrl = '';
 }
-// Héritage de CustomEventDispatcher
+// Héritage de Page
 Page.prototype = new CustomEventDispatcher();
-Page.prototype.constructor = Page;
+Page.prototype.constructor = CustomEventDispatcher;
 
 Page.prototype.setTemplateUrl = function(value) {
     this.templateUrl = value;
     this.loadTemplate();
 }
 
-// Chargement ajax du template de la page
 Page.prototype.loadTemplate = function() {
     var scope = this;
     var xmlhttp;
@@ -148,69 +125,21 @@ var HomePage = require('./HomePage');
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
     this.changePage(new HomePage());
-};
+}
 
 PageManager.prototype.changePage = function(newPage) {
     var scope = this;
-    
-    // Function handlers
-    this.onTemplateLoadedHandler = this.onTemplateLoaded.bind(this);
-    this.onChangePageHandler = this.onChangePage.bind(this);
 
     this.currentPage = newPage;
-    this.currentPage.addEventListener('templateLoaded', this.onTemplateLoadedHandler);
-    this.currentPage.addEventListener('changePage', this.onChangePageHandler);
-};
-
-PageManager.prototype.onChangePage = function (e) {
-    this.changePage(e.newPage);
-    console.log('changingpage');
-    this.currentPage.removeEventListener('changePage', this.onChangePageHandler);
-};
-
-PageManager.prototype.onTemplateLoaded = function(e) {
-    this.updateView(e.data);
-    this.currentPage.removeEventListener('templateLoaded', this.onTemplateLoadedHandler);
-};
+    this.currentPage.addEventListener('templateLoaded', function(e) {
+        scope.updateView(e.data);
+    });
+}
 
 PageManager.prototype.updateView = function(template) {
-    // TODO Create in/out transitions when changing page
     this.pageContainer.innerHTML = template;
-    this.currentPage.dispatchEvent({ type: 'pageDisplayed' });
     console.log('Template changed !');
-};
+}
 
 module.exports = PageManager;
-},{"./HomePage":3}],6:[function(require,module,exports){
-/**
- * Created by jerek0 on 08/02/2015.
- */
-var HomePage = require('./HomePage');
-var Page = require('./Page');
-
-var TestPage = function() {
-    // Functions handlers
-    this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
-    
-    this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
-    this.setTemplateUrl('templates/test.html');
-};
-
-// Héritage de Page
-TestPage.prototype = new Page();
-TestPage.prototype.constructor = TestPage;
-
-TestPage.prototype.onPageDisplayed = function() {
-    console.log('TestPage template displayed');
-    this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
-
-    var scope = this;
-    var btnBack = document.getElementById("btn-back");
-    btnBack.addEventListener('click', function() {
-        console.log(HomePage);
-        scope.dispatchEvent({ type: 'changePage', newPage: new HomePage() });
-    });
-};
-
-module.exports = TestPage;
-},{"./HomePage":3,"./Page":4}]},{},[1]);
+},{"./HomePage":3}]},{},[1]);
