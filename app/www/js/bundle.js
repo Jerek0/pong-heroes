@@ -12,6 +12,12 @@ var app = {
     },
 
     onDeviceReady: function() {
+        if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
+            document.body.classList.add('mobile');
+        } else {
+            document.body.classList.add('desktop');
+        }
+        
         app.pageManager = new PageManager(document.getElementById('ui'));
     }
 };

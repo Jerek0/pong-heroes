@@ -35,6 +35,14 @@ a.light {
     color: white;
 }
 
+body.mobile .desktop {
+    display: none;
+}
+
+body.desktop .mobile {
+    display: none;
+}
+
 #game {
     background: #F3BD0B;
     width: 100%;
