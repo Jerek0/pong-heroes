@@ -55,10 +55,21 @@ TechnoPage.prototype.destroyTechnoChoosing = function() {
 
 TechnoPage.prototype.chooseTechno = function() {
     localStorage.setItem('PH-tech', event.target.dataset.tech);
-    console.log(localStorage.getItem('PH-tech'));
-    
     this.destroyTechnoChoosing();
-    this.dispatchEvent({ type: 'changePage', newPage: 'HomePage' });
+    
+    switch(localStorage.getItem('PH-tech')) {
+        case 'keys':
+        case 'gyro':
+            this.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+            break;
+        case 'desktop-remote':
+        case 'mobile-remote':
+            this.dispatchEvent({ type: 'changePage', newPage: 'SyncPage' });
+            break;
+        default:
+            alert('What you want ?');
+            break;
+    }
 }
 
 module.exports = TechnoPage;

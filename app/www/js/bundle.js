@@ -224,10 +224,14 @@ PageManager.prototype.onTemplateLoaded = function(e) {
 };
 
 PageManager.prototype.updateView = function(template) {
-    // TODO Create in/out transitions when changing page
-    this.pageContainer.innerHTML = template;
-    this.currentPage.dispatchEvent({ type: 'pageDisplayed' });
-    //console.log('Template changed !');
+    this.pageContainer.classList.remove('bounceIn');
+    
+    var scope = this;
+    setTimeout(function() {
+        scope.pageContainer.innerHTML = template;
+        scope.pageContainer.classList.add('bounceIn');
+        scope.currentPage.dispatchEvent({ type: 'pageDisplayed' });
+    }, 50);
 };
 
 module.exports = PageManager;
