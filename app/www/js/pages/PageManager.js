@@ -4,6 +4,7 @@
 
 var HomePage = require('./HomePage');
 var TechnoPage = require('./TechnoPage');
+var MatchmakingPage = require('./MatchmakingPage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
@@ -23,6 +24,9 @@ PageManager.prototype.changePage = function(newPage) {
             break;
         case "TechnoPage":
             this.currentPage = new TechnoPage();
+            break;
+        case "MatchmakingPage":
+            this.currentPage = new MatchmakingPage();
             break;
         default:
             this.currentPage = new HomePage();

@@ -3,7 +3,7 @@
  */
 
 var HomePage = require('./HomePage');
-var TestPage = require('./TechnoPage');
+var TechnoPage = require('./TechnoPage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
@@ -21,8 +21,8 @@ PageManager.prototype.changePage = function(newPage) {
         case "HomePage":
             this.currentPage = new HomePage();
             break;
-        case "TestPage":
-            this.currentPage = new TestPage();
+        case "TechnoPage":
+            this.currentPage = new TechnoPage();
             break;
         default:
             this.currentPage = new HomePage();
@@ -34,7 +34,7 @@ PageManager.prototype.changePage = function(newPage) {
 
 PageManager.prototype.onChangePage = function (e) {
     this.changePage(e.newPage);
-    console.log('changingpage');
+    //console.log('changingpage');
     this.currentPage.removeEventListener('changePage', this.onChangePageHandler);
 };
 
@@ -47,7 +47,7 @@ PageManager.prototype.updateView = function(template) {
     // TODO Create in/out transitions when changing page
     this.pageContainer.innerHTML = template;
     this.currentPage.dispatchEvent({ type: 'pageDisplayed' });
-    console.log('Template changed !');
+    //console.log('Template changed !');
 };
 
 module.exports = PageManager;

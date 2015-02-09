@@ -1,30 +1,30 @@
 /**
- * Created by jerek0 on 08/02/2015.
+ * Created by jerek0 on 09/02/2015.
  */
 
 var Page = require('./Page');
 
-var TestPage = function() {
+var MatchmakingPage = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
-    
+
     this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
-    this.setTemplateUrl('templates/techno.html');
+    this.setTemplateUrl('templates/matchmaking.html');
 };
 
 // Héritage de Page
-TestPage.prototype = new Page();
-TestPage.prototype.constructor = TestPage;
+MatchmakingPage.prototype = new Page();
+MatchmakingPage.prototype.constructor = MatchmakingPage;
 
-TestPage.prototype.onPageDisplayed = function() {
-    console.log('TechnoPage template displayed');
+MatchmakingPage.prototype.onPageDisplayed = function() {
+    console.log('MatchmakingPage template displayed');
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
 
     var scope = this;
     var btnBack = document.getElementById("btn-back");
     btnBack.addEventListener('click', function() {
-        scope.dispatchEvent({ type: 'changePage', newPage: 'HomePage' });
+        scope.dispatchEvent({ type: 'changePage', newPage: 'TechnoPage' });
     });
 };
 
-module.exports = TestPage;
+module.exports = MatchmakingPage;

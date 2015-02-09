@@ -31,6 +31,18 @@ a {
     text-decoration: none;
 }
 
+a.light {
+    color: white;
+}
+
+body.mobile .desktop {
+    display: none;
+}
+
+body.desktop .mobile {
+    display: none;
+}
+
 #game {
     background: #F3BD0B;
     width: 100%;
@@ -68,4 +80,73 @@ a {
     border-radius: 3px;
     box-shadow: 0.1em 0.1em 0 rgba(0,0,0,.2);
     color: #FFFFFF;
+}
+
+/* UTIL */
+
+.col50 {
+    float: left;
+    width: 50%;
+}
+
+.relative {
+    position: relative;
+}
+
+.hidden {
+    display: none;
+}
+
+.bigbox {
+    width: 90%;
+    height: 90%;
+}
+
+.bigheight {
+    height: 90vh;
+}
+
+.mediumheight {
+    height: 50vh;
+}
+
+.fullwidth {
+    width: 100%;
+}
+
+.topleft {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    z-index: 1;
+}
+
+.padding-horizontal-standard, .padding-left-standard, .padding-right-standard {
+    box-sizing: border-box;
+}
+
+.padding-horizontal-standard {
+    padding: 0 20px;
+}
+
+.padding-left-standard {
+    padding-left: 20px;
+}
+
+.padding-right-standard {
+    padding-right: 20px;
+}
+
+.coloredbox {
+    background-color: #4A3637;
+    border-radius: 3px;
+    box-shadow: 0.1em 0.1em 0 rgba(0,0,0,.2);
+}
+
+.coloredbox-male {
+    background-color: cornflowerblue;
+}
+
+.coloredbox-female {
+    background-color: crimson;
 }

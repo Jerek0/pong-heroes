@@ -3,8 +3,8 @@ var PageManager = require('./pages/PageManager');
 
 var app = {
     initialize: function() {
-        this.bindEvents();
-        //this.onDeviceReady();
+        //this.bindEvents();
+        this.onDeviceReady();
     },
 
     bindEvents: function() {
@@ -12,6 +12,12 @@ var app = {
     },
 
     onDeviceReady: function() {
+        if( /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ) {
+            document.body.classList.add('mobile');
+        } else {
+            document.body.classList.add('desktop');
+        }
+        
         app.pageManager = new PageManager(document.getElementById('ui'));
     }
 };
@@ -43,12 +49,12 @@ CustomEventDispatcher.prototype.addEventListener= function(type, listener, useCa
 CustomEventDispatcher.prototype.removeEventListener= function(type, listener, useCapture) {
     var listeners= this._getListeners(type, useCapture);
     var ix= listeners.indexOf(listener);
-    console.log(listeners);
-    console.log(ix);
+    //console.log(listeners);
+    //console.log(ix);
     if (ix!==-1)
         listeners.splice(ix, 1);
-    console.log(listeners);
-    console.log('######');
+    //console.log(listeners);
+    //console.log('######');
 };
 
 CustomEventDispatcher.prototype.dispatchEvent= function(evt) {
@@ -142,7 +148,7 @@ module.exports = Page;
  */
 
 var HomePage = require('./HomePage');
-var TestPage = require('./TechnoPage');
+var TechnoPage = require('./TechnoPage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
@@ -160,8 +166,8 @@ PageManager.prototype.changePage = function(newPage) {
         case "HomePage":
             this.currentPage = new HomePage();
             break;
-        case "TestPage":
-            this.currentPage = new TestPage();
+        case "TechnoPage":
+            this.currentPage = new TechnoPage();
             break;
         default:
             this.currentPage = new HomePage();
@@ -173,7 +179,7 @@ PageManager.prototype.changePage = function(newPage) {
 
 PageManager.prototype.onChangePage = function (e) {
     this.changePage(e.newPage);
-    console.log('changingpage');
+    //console.log('changingpage');
     this.currentPage.removeEventListener('changePage', this.onChangePageHandler);
 };
 
@@ -186,18 +192,18 @@ PageManager.prototype.updateView = function(template) {
     // TODO Create in/out transitions when changing page
     this.pageContainer.innerHTML = template;
     this.currentPage.dispatchEvent({ type: 'pageDisplayed' });
-    console.log('Template changed !');
+    //console.log('Template changed !');
 };
 
 module.exports = PageManager;
-},{"./HomePage":3,"./TestPage":6}],6:[function(require,module,exports){
+},{"./HomePage":3,"./TechnoPage":6}],6:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
 
 var Page = require('./Page');
 
-var TestPage = function() {
+var TechnoPage = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
     
@@ -206,19 +212,53 @@ var TestPage = function() {
 };
 
 // Héritage de Page
-TestPage.prototype = new Page();
-TestPage.prototype.constructor = TestPage;
+TechnoPage.prototype = new Page();
+TechnoPage.prototype.constructor = TechnoPage;
 
-TestPage.prototype.onPageDisplayed = function() {
+TechnoPage.prototype.onPageDisplayed = function() {
     console.log('TechnoPage template displayed');
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
+    
+    this.bindUiEvents();
+};
 
+TechnoPage.prototype.bindUiEvents = function() {
     var scope = this;
     var btnBack = document.getElementById("btn-back");
     btnBack.addEventListener('click', function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'HomePage' });
     });
+    
+    this.registerTechnoChoosing();
 };
 
-module.exports = TestPage;
+TechnoPage.prototype.registerTechnoChoosing = function() {
+    this.chooseTechnoHandler = this.chooseTechno.bind(this);
+    
+    // Listen to every technoChooser
+    this.technoChoosers = document.querySelectorAll('.techno-chooser');
+    var numberOfTechnos = this.technoChoosers.length;
+    var i;
+    for(i = 0; i < numberOfTechnos; i++) {
+        this.technoChoosers[i].addEventListener('click', this.chooseTechnoHandler);
+    }
+};
+
+TechnoPage.prototype.destroyTechnoChoosing = function() {
+    var numberOfTechnos = this.technoChoosers.length;
+    var i;
+    for(i = 0; i < numberOfTechnos; i++) {
+        this.technoChoosers[i].removeEventListener('click', this.chooseTechnoHandler);
+    }
+}
+
+TechnoPage.prototype.chooseTechno = function() {
+    localStorage.setItem('PH-tech', event.target.dataset.tech);
+    console.log(localStorage.getItem('PH-tech'));
+    
+    this.destroyTechnoChoosing();
+    this.dispatchEvent({ type: 'changePage', newPage: 'HomePage' });
+}
+
+module.exports = TechnoPage;
 },{"./Page":4}]},{},[1]);

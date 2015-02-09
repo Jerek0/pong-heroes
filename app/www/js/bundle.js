@@ -23,7 +23,7 @@ var app = {
 };
 
 app.initialize();
-},{"./pages/PageManager":5}],2:[function(require,module,exports){
+},{"./pages/PageManager":6}],2:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -96,7 +96,38 @@ HomePage.prototype.onPageDisplayed = function() {
 };
 
 module.exports = HomePage;
-},{"./Page":4}],4:[function(require,module,exports){
+},{"./Page":5}],4:[function(require,module,exports){
+/**
+ * Created by jerek0 on 09/02/2015.
+ */
+
+var Page = require('./Page');
+
+var MatchmakingPage = function() {
+    // Functions handlers
+    this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
+
+    this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
+    this.setTemplateUrl('templates/matchmaking.html');
+};
+
+// Héritage de Page
+MatchmakingPage.prototype = new Page();
+MatchmakingPage.prototype.constructor = MatchmakingPage;
+
+MatchmakingPage.prototype.onPageDisplayed = function() {
+    console.log('MatchmakingPage template displayed');
+    this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
+
+    var scope = this;
+    var btnBack = document.getElementById("btn-back");
+    btnBack.addEventListener('click', function() {
+        scope.dispatchEvent({ type: 'changePage', newPage: 'TechnoPage' });
+    });
+};
+
+module.exports = MatchmakingPage;
+},{"./Page":5}],5:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -142,13 +173,14 @@ Page.prototype.loadTemplate = function() {
 }
 
 module.exports = Page;
-},{"../events/CustomEventDispatcher":2}],5:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],6:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
 
 var HomePage = require('./HomePage');
 var TechnoPage = require('./TechnoPage');
+var MatchmakingPage = require('./MatchmakingPage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
@@ -168,6 +200,9 @@ PageManager.prototype.changePage = function(newPage) {
             break;
         case "TechnoPage":
             this.currentPage = new TechnoPage();
+            break;
+        case "MatchmakingPage":
+            this.currentPage = new MatchmakingPage();
             break;
         default:
             this.currentPage = new HomePage();
@@ -196,7 +231,7 @@ PageManager.prototype.updateView = function(template) {
 };
 
 module.exports = PageManager;
-},{"./HomePage":3,"./TechnoPage":6}],6:[function(require,module,exports){
+},{"./HomePage":3,"./MatchmakingPage":4,"./TechnoPage":7}],7:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -254,11 +289,22 @@ TechnoPage.prototype.destroyTechnoChoosing = function() {
 
 TechnoPage.prototype.chooseTechno = function() {
     localStorage.setItem('PH-tech', event.target.dataset.tech);
-    console.log(localStorage.getItem('PH-tech'));
-    
     this.destroyTechnoChoosing();
-    this.dispatchEvent({ type: 'changePage', newPage: 'HomePage' });
+    
+    switch(localStorage.getItem('PH-tech')) {
+        case 'keys':
+        case 'gyro':
+            this.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+            break;
+        case 'desktop-remote':
+        case 'mobile-remote':
+            this.dispatchEvent({ type: 'changePage', newPage: 'SyncPage' });
+            break;
+        default:
+            alert('What you want ?');
+            break;
+    }
 }
 
 module.exports = TechnoPage;
-},{"./Page":4}]},{},[1]);
+},{"./Page":5}]},{},[1]);
