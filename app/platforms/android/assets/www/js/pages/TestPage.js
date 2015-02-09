@@ -9,7 +9,7 @@ var TestPage = function() {
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
     
     this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
-    this.setTemplateUrl('templates/test.html');
+    this.setTemplateUrl('templates/techno.html');
 };
 
 // Héritage de Page
@@ -17,7 +17,7 @@ TestPage.prototype = new Page();
 TestPage.prototype.constructor = TestPage;
 
 TestPage.prototype.onPageDisplayed = function() {
-    console.log('TestPage template displayed');
+    console.log('TechnoPage template displayed');
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
 
     var scope = this;

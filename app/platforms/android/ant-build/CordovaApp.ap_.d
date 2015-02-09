@@ -50,5 +50,7 @@
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/pages/HomePage.js \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/pages/Page.js \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/pages/PageManager.js \
+/Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/pages/TechnoPage.js \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/templates/home.html \
+/Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/templates/test.html \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/ant-build/AndroidManifest.xml \

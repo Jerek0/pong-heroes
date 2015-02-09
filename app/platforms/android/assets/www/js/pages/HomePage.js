@@ -5,16 +5,26 @@
 var Page = require('./Page');
 
 var HomePage = function() {
-    this.addEventListener('templateLoaded', this.onPageDisplayed.bind(this));
+    // Functions handlers
+    this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
+
+    this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
     this.setTemplateUrl('templates/home.html');
-}
+};
+
 // Héritage de Page
 HomePage.prototype = new Page();
 HomePage.prototype.constructor = HomePage;
 
 HomePage.prototype.onPageDisplayed = function() {
     console.log('HomePage template displayed');
-    this.removeEventListener('templateLoaded', this.onPageDisplayed.bind(this));
-}
+    this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
+    
+    var scope = this;
+    var btnPlay = document.getElementById("btn-play");
+    btnPlay.addEventListener('click', function() {
+        scope.dispatchEvent({ type: 'changePage', newPage: 'TechnoPage' });
+    });
+};
 
 module.exports = HomePage;

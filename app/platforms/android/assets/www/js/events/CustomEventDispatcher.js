@@ -23,8 +23,12 @@ CustomEventDispatcher.prototype.addEventListener= function(type, listener, useCa
 CustomEventDispatcher.prototype.removeEventListener= function(type, listener, useCapture) {
     var listeners= this._getListeners(type, useCapture);
     var ix= listeners.indexOf(listener);
+    console.log(listeners);
+    console.log(ix);
     if (ix!==-1)
         listeners.splice(ix, 1);
+    console.log(listeners);
+    console.log('######');
 };
 
 CustomEventDispatcher.prototype.dispatchEvent= function(evt) {

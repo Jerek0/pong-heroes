@@ -23,7 +23,7 @@ HomePage.prototype.onPageDisplayed = function() {
     var scope = this;
     var btnPlay = document.getElementById("btn-play");
     btnPlay.addEventListener('click', function() {
-        scope.dispatchEvent({ type: 'changePage', newPage: 'TestPage' });
+        scope.dispatchEvent({ type: 'changePage', newPage: 'TechnoPage' });
     });
 };
 
