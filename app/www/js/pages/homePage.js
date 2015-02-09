@@ -3,7 +3,6 @@
  */
 
 var Page = require('./Page');
-var TestPage = require('./TestPage');
 
 var HomePage = function() {
     // Functions handlers
@@ -24,8 +23,7 @@ HomePage.prototype.onPageDisplayed = function() {
     var scope = this;
     var btnPlay = document.getElementById("btn-play");
     btnPlay.addEventListener('click', function() {
-        console.log(TestPage);
-        scope.dispatchEvent({ type: 'changePage', newPage: new TestPage() });
+        scope.dispatchEvent({ type: 'changePage', newPage: 'TestPage' });
     });
 };
 

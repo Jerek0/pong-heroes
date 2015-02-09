@@ -3,10 +3,11 @@
  */
 
 var HomePage = require('./HomePage');
+var TestPage = require('./TestPage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
-    this.changePage(new HomePage());
+    this.changePage('HomePage');
 };
 
 PageManager.prototype.changePage = function(newPage) {
@@ -16,7 +17,17 @@ PageManager.prototype.changePage = function(newPage) {
     this.onTemplateLoadedHandler = this.onTemplateLoaded.bind(this);
     this.onChangePageHandler = this.onChangePage.bind(this);
 
-    this.currentPage = newPage;
+    switch (newPage) {
+        case "HomePage":
+            this.currentPage = new HomePage();
+            break;
+        case "TestPage":
+            this.currentPage = new TestPage();
+            break;
+        default:
+            this.currentPage = new HomePage();
+    }
+    
     this.currentPage.addEventListener('templateLoaded', this.onTemplateLoadedHandler);
     this.currentPage.addEventListener('changePage', this.onChangePageHandler);
 };

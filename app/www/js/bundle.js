@@ -65,7 +65,6 @@ module.exports = CustomEventDispatcher;
  */
 
 var Page = require('./Page');
-var TestPage = require('./TestPage');
 
 var HomePage = function() {
     // Functions handlers
@@ -86,13 +85,12 @@ HomePage.prototype.onPageDisplayed = function() {
     var scope = this;
     var btnPlay = document.getElementById("btn-play");
     btnPlay.addEventListener('click', function() {
-        console.log(TestPage);
-        scope.dispatchEvent({ type: 'changePage', newPage: new TestPage() });
+        scope.dispatchEvent({ type: 'changePage', newPage: 'TestPage' });
     });
 };
 
 module.exports = HomePage;
-},{"./Page":4,"./TestPage":6}],4:[function(require,module,exports){
+},{"./Page":4}],4:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -144,10 +142,11 @@ module.exports = Page;
  */
 
 var HomePage = require('./HomePage');
+var TestPage = require('./TestPage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
-    this.changePage(new HomePage());
+    this.changePage('HomePage');
 };
 
 PageManager.prototype.changePage = function(newPage) {
@@ -157,7 +156,16 @@ PageManager.prototype.changePage = function(newPage) {
     this.onTemplateLoadedHandler = this.onTemplateLoaded.bind(this);
     this.onChangePageHandler = this.onChangePage.bind(this);
 
-    this.currentPage = newPage;
+    switch (newPage) {
+        case "HomePage":
+            this.currentPage = new HomePage();
+            break;
+        case "TestPage":
+            this.currentPage = new TestPage();
+            break;
+        default:
+            this.currentPage = new HomePage();
+    }
     this.currentPage.addEventListener('templateLoaded', this.onTemplateLoadedHandler);
     this.currentPage.addEventListener('changePage', this.onChangePageHandler);
 };
@@ -181,11 +189,11 @@ PageManager.prototype.updateView = function(template) {
 };
 
 module.exports = PageManager;
-},{"./HomePage":3}],6:[function(require,module,exports){
+},{"./HomePage":3,"./TestPage":6}],6:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
-var HomePage = require('./HomePage');
+
 var Page = require('./Page');
 
 var TestPage = function() {
@@ -207,10 +215,9 @@ TestPage.prototype.onPageDisplayed = function() {
     var scope = this;
     var btnBack = document.getElementById("btn-back");
     btnBack.addEventListener('click', function() {
-        console.log(HomePage);
-        scope.dispatchEvent({ type: 'changePage', newPage: new HomePage() });
+        scope.dispatchEvent({ type: 'changePage', newPage: 'HomePage' });
     });
 };
 
 module.exports = TestPage;
-},{"./HomePage":3,"./Page":4}]},{},[1]);
+},{"./Page":4}]},{},[1]);
