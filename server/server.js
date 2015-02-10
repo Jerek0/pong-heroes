@@ -31,7 +31,7 @@ var ServerManager = {
     /**
      * Array containing all the available rooms' IDs *
      */
-    playableRooms: [234,986],
+    playableRooms: [],
 
     /**
      * Allows to launch the ServerManager *
