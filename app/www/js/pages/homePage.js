@@ -17,9 +17,10 @@ HomePage.prototype = new Page();
 HomePage.prototype.constructor = HomePage;
 
 HomePage.prototype.onPageDisplayed = function() {
-    console.log('HomePage template displayed');
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
     
+    // TODO Show btn only when connected to server
+    // TODO Watch Memory Here
     var scope = this;
     var btnPlay = document.getElementById("btn-play");
     btnPlay.addEventListener('click', function() {

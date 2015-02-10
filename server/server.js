@@ -23,11 +23,20 @@ server.listen(port, url, function() {
 var ServerManager = {
 
     /**
+     * Array containing every game controller we have to manage *
+     * Each game controller key is it's gameID *
+     */
+    gameControllers: [],
+
+    /**
+     * Array containing all the available rooms' IDs *
+     */
+    playableRooms: [234,986],
+
+    /**
      * Allows to launch the ServerManager *
      */
     init: function() {
-        // Array of gameControllers
-        this.gameControllers = [];
 
         // Check for connection
         io.sockets.on('connection', this.onNewConnection.bind(this));
@@ -41,22 +50,23 @@ var ServerManager = {
      * @param socket - The new connection's socket
      */
     onNewConnection: function(socket) {
+        var scope = this;
         this.log('Connection attempt');
 
         socket.on('newHosting', function() {
-            this.newHost(socket);
+            scope.newHost(socket);
         });
         
         socket.on('joinHosting', function(data) {
-            this.newJoin(socket, data)
+            scope.newJoin(socket, data)
         });
 
         socket.on('getRooms', function() {
-            this.getRooms(socket);
+            scope.getRooms(socket);
         });
 
         socket.on('disconnect', function() {
-            this.log('Someone disconnected');
+            scope.log('Someone disconnected');
         });
     },
 
@@ -67,7 +77,7 @@ var ServerManager = {
     getRooms: function(socket) {
         this.log('Rooms asked');
         
-        socket.emit('rooms', io.sockets.adapter.rooms);
+        socket.emit('rooms', {rooms: this.playableRooms});
     },
 
     /**
@@ -76,7 +86,7 @@ var ServerManager = {
      */
     newHost: function(socket) {
         this.log('Host attempt');
-        socket.gameID = Date.now();
+        socket.gameID = Math.round((Math.random() * 1000));
         
         // Get the room
         socket.room = io.sockets.adapter.rooms[socket.gameID];
@@ -84,6 +94,7 @@ var ServerManager = {
         // Checks if the room already exists
         if(socket.room==undefined) {
             console.log("Room created with ID "+socket.gameID);
+            this.playableRooms.push(socket.gameID);
 
             // Inform client of the room ID and Join this room
             socket.emit('newGameID', {gameID: socket.gameID});
@@ -93,7 +104,6 @@ var ServerManager = {
             this.gameControllers[socket.gameID] = new GameController();
             this.gameControllers[socket.gameID].init(socket.gameID);
             this.gameControllers[socket.gameID].setComputer(socket);
-
         } else { // If so, try another one
             this.log("Room "+socket.gameID+" already set, trying another one");
             this.newHost(socket);
@@ -131,35 +141,22 @@ var ServerManager = {
     }
 }
 
-/*
 // Une instance par paire desktop / mobile
 function GameController() {
     this.init = function(gameID) {
         this.gameID = gameID;
     },
 
-        this.setComputer = function(socket) {
-            this.computer = socket;
-        },
+    this.setComputer = function(socket) {
+        this.computer = socket;
+    },
 
-        this.setMobile = function(socket) {
-            var self = this;
+    this.setMobile = function(socket) {
+        var self = this;
 
-            this.mobile = socket;
+        this.mobile = socket;
 
-            // Inform everyone in the room that there is a new connection between them
-            io.sockets.in(this.gameID).emit('newBridge');
-
-            this.mobile.on('mobileMove', function() {
-                self.computer.emit('move');
-            });
-
-            this.mobile.on('mobileDelta', function(data) {
-                self.computer.emit('delta', data);
-            });
-
-            this.mobile.on('mobileStop', function() {
-                self.computer.emit('stop');
-            });
-        }
-}*/
+        // Inform everyone in the room that there is a new connection between them
+        io.sockets.in(this.gameID).emit('newBridge');
+    }
+}

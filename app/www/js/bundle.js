@@ -1,5 +1,7 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function (global){
 var PageManager = require('./pages/PageManager');
+var ServerDialer = require('./network/ServerDialer');
 
 var app = {
     initialize: function() {
@@ -19,11 +21,19 @@ var app = {
         }
         
         app.pageManager = new PageManager(document.getElementById('ui'));
+        app.connectToServer();
+    },
+    
+    connectToServer: function() {
+        if(!global.serverDialer) {
+            global.serverDialer = new ServerDialer();
+        }
     }
 };
 
 app.initialize();
-},{"./pages/PageManager":6}],2:[function(require,module,exports){
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./network/ServerDialer":3,"./pages/PageManager":8}],2:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -67,6 +77,80 @@ CustomEventDispatcher.prototype.dispatchEvent= function(evt) {
 module.exports = CustomEventDispatcher;
 },{}],3:[function(require,module,exports){
 /**
+ * Created by jerek0 on 10/02/2015.
+ */
+    
+var CustomEventDispatcher = require('../events/CustomEventDispatcher');
+var serverConfig = require('./serverConfig');
+
+var ServerDialer = function() {
+    this.init();
+}
+// Héritage de CustomEventDispatcher
+ServerDialer.prototype = new CustomEventDispatcher();
+ServerDialer.prototype.constructor = ServerDialer;
+
+ServerDialer.prototype.init =  function() {
+    this.socket = io.connect('http://'+serverConfig.url+':'+serverConfig.port);
+    
+    var scope = this;
+    this.socket
+        .on('connect', function() {
+            console.log('connectedToServer');
+            scope.dispatchEvent({ type: 'connectedToServer'});
+        })
+        .on('connect_error', function(data) {
+            alert(JSON.stringify(data));
+            console.log(data);
+        });
+    
+    this.bindServerEvents();
+};
+
+ServerDialer.prototype.askForRooms = function() {
+    var scope = this;
+    this.socket.emit('getRooms');
+    this.socket.on('rooms', function(data) {
+       scope.dispatchEvent({ type: 'receivedRooms', data: data.rooms});
+    });
+};
+
+ServerDialer.prototype.onNewGameID = function(data) {
+    console.log('Received game id '+data.gameID);
+    this.urlMobile = window.location.href+"mobile?id="+data.gameID;
+
+    console.log('Go to this address : '+this.urlMobile);
+};
+
+ServerDialer.prototype.onNewBridge = function() {
+    console.log('connection established');
+};
+
+ServerDialer.prototype.bindServerEvents = function() {
+    var scope = this;
+    this.socket.on('newGameID', function(data) {
+        scope.onNewGameID(data);
+    });
+    this.socket.on('newBridge', function() {
+        console.log('newBridge');
+        scope.onNewBridge();
+    });
+};
+
+module.exports = ServerDialer;
+},{"../events/CustomEventDispatcher":2,"./serverConfig":4}],4:[function(require,module,exports){
+/**
+ * Created by jerek0 on 10/02/2015.
+ */
+
+var serverConfig = {
+    url: "127.0.0.1",
+    port: 9005
+}
+
+module.exports = serverConfig;
+},{}],5:[function(require,module,exports){
+/**
  * Created by jerek0 on 08/02/2015.
  */
 
@@ -85,9 +169,10 @@ HomePage.prototype = new Page();
 HomePage.prototype.constructor = HomePage;
 
 HomePage.prototype.onPageDisplayed = function() {
-    console.log('HomePage template displayed');
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
     
+    // TODO Show btn only when connected to server
+    // TODO Watch Memory Here
     var scope = this;
     var btnPlay = document.getElementById("btn-play");
     btnPlay.addEventListener('click', function() {
@@ -96,7 +181,8 @@ HomePage.prototype.onPageDisplayed = function() {
 };
 
 module.exports = HomePage;
-},{"./Page":5}],4:[function(require,module,exports){
+},{"./Page":7}],6:[function(require,module,exports){
+(function (global){
 /**
  * Created by jerek0 on 09/02/2015.
  */
@@ -106,28 +192,60 @@ var Page = require('./Page');
 var MatchmakingPage = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
+    this.populateRoomsHandler = this.populateRooms.bind(this);
 
     this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
     this.setTemplateUrl('templates/matchmaking.html');
 };
-
 // Héritage de Page
 MatchmakingPage.prototype = new Page();
 MatchmakingPage.prototype.constructor = MatchmakingPage;
 
 MatchmakingPage.prototype.onPageDisplayed = function() {
-    console.log('MatchmakingPage template displayed');
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
 
     var scope = this;
     var btnBack = document.getElementById("btn-back");
+    btnBack.innerHTML = localStorage.getItem('PH-tech');
     btnBack.addEventListener('click', function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'TechnoPage' });
     });
+    
+    // GET THE ROOMS
+    global.serverDialer.askForRooms();
+    global.serverDialer.addEventListener('receivedRooms', this.populateRoomsHandler);
+};
+
+MatchmakingPage.prototype.bindUiActions = function () {
+      
+};
+
+/**
+ * Generates the markup of each room available *
+ * @param e - The event containing rooms
+ */
+MatchmakingPage.prototype.populateRooms = function(e) {
+    global.serverDialer.removeEventListener('receivedRooms', this.populateRoomsHandler);
+    
+    // We have rooms available ! YAY !
+    if(e.data.length) {
+        var numberOfRooms = e.data.length,
+            i;
+
+        document.getElementById('rooms-list').innerHTML = '';
+        for(i = 0; i < numberOfRooms; i++) {
+            document.getElementById('rooms-list').innerHTML += '<li>'+ e.data[i] +'</li>';
+        }
+    } 
+    // We see no room ... :'(
+    else {
+        document.getElementById('rooms-list').innerHTML = '<li>No room available for now ...</li>';
+    }
 };
 
 module.exports = MatchmakingPage;
-},{"./Page":5}],5:[function(require,module,exports){
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./Page":7}],7:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -173,7 +291,7 @@ Page.prototype.loadTemplate = function() {
 }
 
 module.exports = Page;
-},{"../events/CustomEventDispatcher":2}],6:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],8:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -235,7 +353,7 @@ PageManager.prototype.updateView = function(template) {
 };
 
 module.exports = PageManager;
-},{"./HomePage":3,"./MatchmakingPage":4,"./TechnoPage":7}],7:[function(require,module,exports){
+},{"./HomePage":5,"./MatchmakingPage":6,"./TechnoPage":9}],9:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -255,7 +373,6 @@ TechnoPage.prototype = new Page();
 TechnoPage.prototype.constructor = TechnoPage;
 
 TechnoPage.prototype.onPageDisplayed = function() {
-    console.log('TechnoPage template displayed');
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
     
     this.bindUiEvents();
@@ -289,26 +406,13 @@ TechnoPage.prototype.destroyTechnoChoosing = function() {
     for(i = 0; i < numberOfTechnos; i++) {
         this.technoChoosers[i].removeEventListener('click', this.chooseTechnoHandler);
     }
-}
+};
 
 TechnoPage.prototype.chooseTechno = function() {
     localStorage.setItem('PH-tech', event.target.dataset.tech);
     this.destroyTechnoChoosing();
-    
-    switch(localStorage.getItem('PH-tech')) {
-        case 'keys':
-        case 'gyro':
-            this.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
-            break;
-        case 'desktop-remote':
-        case 'mobile-remote':
-            this.dispatchEvent({ type: 'changePage', newPage: 'SyncPage' });
-            break;
-        default:
-            alert('What you want ?');
-            break;
-    }
-}
+    this.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+};
 
 module.exports = TechnoPage;
-},{"./Page":5}]},{},[1]);
+},{"./Page":7}]},{},[1]);

@@ -1,4 +1,5 @@
 var PageManager = require('./pages/PageManager');
+var ServerDialer = require('./network/ServerDialer');
 
 var app = {
     initialize: function() {
@@ -18,6 +19,13 @@ var app = {
         }
         
         app.pageManager = new PageManager(document.getElementById('ui'));
+        app.connectToServer();
+    },
+    
+    connectToServer: function() {
+        if(!global.serverDialer) {
+            global.serverDialer = new ServerDialer();
+        }
     }
 };
 
