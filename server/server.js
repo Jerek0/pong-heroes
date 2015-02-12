@@ -64,10 +64,44 @@ var ServerManager = {
         socket.on('getRooms', function() {
             scope.getRooms(socket);
         });
+        
+        socket.on('leaveRoom', function() {
+            if(socket.gameID)
+                scope.leaveRoom(socket);
+        })
 
         socket.on('disconnect', function() {
             scope.log('Someone disconnected');
+            
+            if(socket.gameID && io.sockets.adapter.rooms[socket.gameID]==undefined)
+                scope.deleteRoom(socket.gameID);
         });
+    },
+
+    /**
+     * Method allowing to delete a room from the list *
+     * @param gameID
+     */
+    deleteRoom: function(gameID) {
+        for(var i=0; i<this.playableRooms.length; i++) {
+            if(this.playableRooms[i]==gameID) {
+                this.playableRooms.splice(i,1);
+                this.log("Deleted room "+gameID);
+            }
+        }
+    },
+
+    /**
+     * Method allowing the socket to leave it's current room *
+     * @param socket
+     */
+    leaveRoom: function(socket) {
+        this.log("Leaving room "+socket.gameID);
+        socket.leave(socket.gameID);
+        if(io.sockets.adapter.rooms[socket.gameID]==undefined) {
+            this.deleteRoom(socket.gameID);
+        }
+        socket.gameID = null;
     },
 
     /**
@@ -87,12 +121,9 @@ var ServerManager = {
     newHost: function(socket) {
         this.log('Host attempt');
         socket.gameID = Math.round((Math.random() * 1000));
-        
-        // Get the room
-        socket.room = io.sockets.adapter.rooms[socket.gameID];
 
         // Checks if the room already exists
-        if(socket.room==undefined) {
+        if(io.sockets.adapter.rooms[socket.gameID]==undefined) {
             console.log("Room created with ID "+socket.gameID);
             this.playableRooms.push(socket.gameID);
 

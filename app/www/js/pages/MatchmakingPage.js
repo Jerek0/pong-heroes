@@ -119,7 +119,7 @@ MatchmakingPage.prototype.joinRoom = function(e) {
 
 MatchmakingPage.prototype.onNewBridge = function () {
     global.serverDialer.removeEventListener('newBridge', this.onNewBridgeHandler);
-    this.dispatchEvent({ type: 'changePage', newPage: 'chooseCharacter' });
+    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
     this.unbindUiActions();
 }
 
@@ -128,7 +128,7 @@ MatchmakingPage.prototype.onNewBridge = function () {
  */
 MatchmakingPage.prototype.newHost = function() {
     global.serverDialer.newHost();
-    this.dispatchEvent({ type: 'changePage', newPage: 'chooseCharacter' });
+    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
     this.unbindUiActions();
 };
 

@@ -33,7 +33,7 @@ var app = {
 
 app.initialize();
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./network/ServerDialer":3,"./pages/PageManager":8}],2:[function(require,module,exports){
+},{"./network/ServerDialer":3,"./pages/PageManager":9}],2:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -125,6 +125,11 @@ ServerDialer.prototype.newJoin = function(id) {
     this.gameID = id;
 };
 
+ServerDialer.prototype.leaveRoom = function() {
+    this.socket.emit('leaveRoom');
+    this.gameID = null;
+}
+
 ServerDialer.prototype.onNewGameID = function(data) {
     console.log('Received game id '+data.gameID);
     this.gameID = data.gameID;
@@ -158,6 +163,41 @@ var serverConfig = {
 
 module.exports = serverConfig;
 },{}],5:[function(require,module,exports){
+(function (global){
+/**
+ * Created by jerek0 on 08/02/2015.
+ */
+
+var Page = require('./Page');
+
+var ChooseCharacter = function() {
+    // Functions handlers
+    this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
+
+    this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
+    this.setTemplateUrl('templates/choose_character.html');
+};
+
+// Héritage de Page
+ChooseCharacter.prototype = new Page();
+ChooseCharacter.prototype.constructor = ChooseCharacter;
+
+ChooseCharacter.prototype.onPageDisplayed = function() {
+    this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
+
+    // TODO Show btn only when connected to server
+    // TODO Watch Memory Here
+    var scope = this;
+    var btnBack = document.getElementById("btn-back");
+    btnBack.addEventListener('click', function() {
+        scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+        global.serverDialer.leaveRoom();
+    });
+};
+
+module.exports = ChooseCharacter;
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./Page":8}],6:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -189,7 +229,7 @@ HomePage.prototype.onPageDisplayed = function() {
 };
 
 module.exports = HomePage;
-},{"./Page":7}],6:[function(require,module,exports){
+},{"./Page":8}],7:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 09/02/2015.
@@ -312,7 +352,7 @@ MatchmakingPage.prototype.joinRoom = function(e) {
 
 MatchmakingPage.prototype.onNewBridge = function () {
     global.serverDialer.removeEventListener('newBridge', this.onNewBridgeHandler);
-    this.dispatchEvent({ type: 'changePage', newPage: 'chooseCharacter' });
+    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
     this.unbindUiActions();
 }
 
@@ -321,13 +361,13 @@ MatchmakingPage.prototype.onNewBridge = function () {
  */
 MatchmakingPage.prototype.newHost = function() {
     global.serverDialer.newHost();
-    this.dispatchEvent({ type: 'changePage', newPage: 'chooseCharacter' });
+    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
     this.unbindUiActions();
 };
 
 module.exports = MatchmakingPage;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":7}],7:[function(require,module,exports){
+},{"./Page":8}],8:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -373,7 +413,7 @@ Page.prototype.loadTemplate = function() {
 }
 
 module.exports = Page;
-},{"../events/CustomEventDispatcher":2}],8:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],9:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -381,6 +421,7 @@ module.exports = Page;
 var HomePage = require('./HomePage');
 var TechnoPage = require('./TechnoPage');
 var MatchmakingPage = require('./MatchmakingPage');
+var ChooseCharacterPage = require('./ChooseCharacterPage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
@@ -403,6 +444,9 @@ PageManager.prototype.changePage = function(newPage) {
             break;
         case "MatchmakingPage":
             this.currentPage = new MatchmakingPage();
+            break;
+        case "ChooseCharacterPage":
+            this.currentPage = new ChooseCharacterPage();
             break;
         default:
             this.currentPage = new HomePage();
@@ -435,7 +479,7 @@ PageManager.prototype.updateView = function(template) {
 };
 
 module.exports = PageManager;
-},{"./HomePage":5,"./MatchmakingPage":6,"./TechnoPage":9}],9:[function(require,module,exports){
+},{"./ChooseCharacterPage":5,"./HomePage":6,"./MatchmakingPage":7,"./TechnoPage":10}],10:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -497,4 +541,4 @@ TechnoPage.prototype.chooseTechno = function() {
 };
 
 module.exports = TechnoPage;
-},{"./Page":7}]},{},[1]);
+},{"./Page":8}]},{},[1]);

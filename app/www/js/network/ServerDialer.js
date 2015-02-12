@@ -47,6 +47,11 @@ ServerDialer.prototype.newJoin = function(id) {
     this.gameID = id;
 };
 
+ServerDialer.prototype.leaveRoom = function() {
+    this.socket.emit('leaveRoom');
+    this.gameID = null;
+}
+
 ServerDialer.prototype.onNewGameID = function(data) {
     console.log('Received game id '+data.gameID);
     this.gameID = data.gameID;
