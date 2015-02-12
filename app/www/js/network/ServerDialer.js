@@ -37,11 +37,19 @@ ServerDialer.prototype.askForRooms = function() {
     });
 };
 
+ServerDialer.prototype.newHost = function() {
+    this.socket.emit('newHosting');
+};
+
+ServerDialer.prototype.newJoin = function(id) {
+    this.socket.emit('joinHosting', { gameID: id});
+    console.log('Joining '+id);
+    this.gameID = id;
+};
+
 ServerDialer.prototype.onNewGameID = function(data) {
     console.log('Received game id '+data.gameID);
-    this.urlMobile = window.location.href+"mobile?id="+data.gameID;
-
-    console.log('Go to this address : '+this.urlMobile);
+    this.gameID = data.gameID;
 };
 
 ServerDialer.prototype.onNewBridge = function() {

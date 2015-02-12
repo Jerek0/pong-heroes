@@ -8,6 +8,10 @@ var MatchmakingPage = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
     this.populateRoomsHandler = this.populateRooms.bind(this);
+    this.joinRoomHandler = this.joinRoom.bind(this);
+    this.newHostHandler = this.newHost.bind(this);
+    this.askForRoomsHandler = this.askForRooms.bind(this);
+    this.onNewBridgeHandler = this.onNewBridge.bind(this);
 
     this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
     this.setTemplateUrl('templates/matchmaking.html');
@@ -16,6 +20,9 @@ var MatchmakingPage = function() {
 MatchmakingPage.prototype = new Page();
 MatchmakingPage.prototype.constructor = MatchmakingPage;
 
+/**
+ * Function called when view is ready *
+ */
 MatchmakingPage.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
 
@@ -26,13 +33,25 @@ MatchmakingPage.prototype.onPageDisplayed = function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'TechnoPage' });
     });
     
-    // GET THE ROOMS
-    global.serverDialer.askForRooms();
-    global.serverDialer.addEventListener('receivedRooms', this.populateRoomsHandler);
+    this.askForRooms();
+    this.bindUiActions();
 };
 
+/**
+ * Function managing UI actions *
+ */
 MatchmakingPage.prototype.bindUiActions = function () {
-      
+    this.btnHost = document.getElementById('btn-host');
+    this.btnHost.addEventListener('click', this.newHostHandler);
+
+    this.btnRefresh = document.getElementById('btn-refresh');
+    this.btnRefresh.addEventListener('click', this.askForRoomsHandler);
+};
+
+MatchmakingPage.prototype.unbindUiActions = function() {
+    this.btnHost.removeEventListener('click', this.newHostHandler);
+    this.btnRefresh.removeEventListener('click', this.askForRoomsHandler);
+    this.destroyRoomChoosing();
 };
 
 /**
@@ -49,13 +68,68 @@ MatchmakingPage.prototype.populateRooms = function(e) {
 
         document.getElementById('rooms-list').innerHTML = '';
         for(i = 0; i < numberOfRooms; i++) {
-            document.getElementById('rooms-list').innerHTML += '<li>'+ e.data[i] +'</li>';
+            document.getElementById('rooms-list').innerHTML += '<li data-roomId="'+ e.data[i] +'">Room '+ e.data[i] +'</li>';
         }
+        
+        // We listen now for a Room choosing
+        this.registerRoomChoosing();
     } 
     // We see no room ... :'(
     else {
         document.getElementById('rooms-list').innerHTML = '<li>No room available for now ...</li>';
     }
+};
+
+/**
+ * Listen all the rooms for a click *
+ */
+MatchmakingPage.prototype.registerRoomChoosing = function() {
+    this.rooms = document.querySelectorAll('#rooms-list li');
+    
+    var i;
+    for(i = 0; i < this.rooms.length; i++) {
+        this.rooms[i].addEventListener('click', this.joinRoomHandler);
+    }
+};
+
+/**
+ * Destroy the rooms listeners *
+ */
+MatchmakingPage.prototype.destroyRoomChoosing = function() {
+    var i;
+    for(i = 0; i < this.rooms.length; i++) {
+        this.rooms[i].removeEventListener('click', this.joinRoomHandler);
+    }
+};
+
+MatchmakingPage.prototype.askForRooms = function() {
+    // GET THE ROOMS
+    global.serverDialer.askForRooms();
+    global.serverDialer.addEventListener('receivedRooms', this.populateRoomsHandler);
+};
+
+/**
+ * On click to a room, we join it *
+ * @param e
+ */
+MatchmakingPage.prototype.joinRoom = function(e) {
+    global.serverDialer.newJoin(e.currentTarget.dataset.roomid);
+    global.serverDialer.addEventListener('newBridge', this.onNewBridgeHandler);
+};
+
+MatchmakingPage.prototype.onNewBridge = function () {
+    global.serverDialer.removeEventListener('newBridge', this.onNewBridgeHandler);
+    this.dispatchEvent({ type: 'changePage', newPage: 'chooseCharacter' });
+    this.unbindUiActions();
+}
+
+/**
+ * On click on the new host button, we notify the server *
+ */
+MatchmakingPage.prototype.newHost = function() {
+    global.serverDialer.newHost();
+    this.dispatchEvent({ type: 'changePage', newPage: 'chooseCharacter' });
+    this.unbindUiActions();
 };
 
 module.exports = MatchmakingPage;
