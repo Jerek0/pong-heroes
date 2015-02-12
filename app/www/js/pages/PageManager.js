@@ -10,6 +10,8 @@ var ChooseCharacterPage = require('./ChooseCharacterPage');
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
     this.changePage('HomePage');
+
+    global.serverDialer.addEventListener('changePage', this.onChangePageHandler);
 };
 
 PageManager.prototype.changePage = function(newPage) {

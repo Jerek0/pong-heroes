@@ -17,7 +17,6 @@ TechnoPage.prototype = new Page();
 TechnoPage.prototype.constructor = TechnoPage;
 
 TechnoPage.prototype.onPageDisplayed = function() {
-    console.log('TechnoPage template displayed');
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
     
     this.bindUiEvents();
@@ -51,25 +50,12 @@ TechnoPage.prototype.destroyTechnoChoosing = function() {
     for(i = 0; i < numberOfTechnos; i++) {
         this.technoChoosers[i].removeEventListener('click', this.chooseTechnoHandler);
     }
-}
+};
 
 TechnoPage.prototype.chooseTechno = function() {
     localStorage.setItem('PH-tech', event.target.dataset.tech);
     this.destroyTechnoChoosing();
-    
-    switch(localStorage.getItem('PH-tech')) {
-        case 'keys':
-        case 'gyro':
-            this.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
-            break;
-        case 'desktop-remote':
-        case 'mobile-remote':
-            this.dispatchEvent({ type: 'changePage', newPage: 'SyncPage' });
-            break;
-        default:
-            alert('What you want ?');
-            break;
-    }
-}
+    this.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+};
 
 module.exports = TechnoPage;

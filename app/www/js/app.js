@@ -17,9 +17,9 @@ var app = {
         } else {
             document.body.classList.add('desktop');
         }
-        
-        app.pageManager = new PageManager(document.getElementById('ui'));
+
         app.connectToServer();
+        app.pageManager = new PageManager(document.getElementById('ui'));
     },
     
     connectToServer: function() {

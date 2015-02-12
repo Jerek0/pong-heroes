@@ -9,7 +9,7 @@ var MatchmakingPage = function() {
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
     this.populateRoomsHandler = this.populateRooms.bind(this);
     this.joinRoomHandler = this.joinRoom.bind(this);
-    this.newHostHandler = this.newHost.bind(this);
+    this.newHostHandler = this.hostRoom.bind(this);
     this.askForRoomsHandler = this.askForRooms.bind(this);
     this.onNewBridgeHandler = this.onNewBridge.bind(this);
 
@@ -113,7 +113,7 @@ MatchmakingPage.prototype.askForRooms = function() {
  * @param e
  */
 MatchmakingPage.prototype.joinRoom = function(e) {
-    global.serverDialer.newJoin(e.currentTarget.dataset.roomid);
+    global.serverDialer.joinRoom(e.currentTarget.dataset.roomid);
     global.serverDialer.addEventListener('newBridge', this.onNewBridgeHandler);
 };
 
@@ -126,8 +126,8 @@ MatchmakingPage.prototype.onNewBridge = function () {
 /**
  * On click on the new host button, we notify the server *
  */
-MatchmakingPage.prototype.newHost = function() {
-    global.serverDialer.newHost();
+MatchmakingPage.prototype.hostRoom = function() {
+    global.serverDialer.hostRoom();
     this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
     this.unbindUiActions();
 };

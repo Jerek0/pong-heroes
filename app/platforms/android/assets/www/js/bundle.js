@@ -1,5 +1,7 @@
 (function e(t,n,r){function s(o,u){if(!n[o]){if(!t[o]){var a=typeof require=="function"&&require;if(!u&&a)return a(o,!0);if(i)return i(o,!0);var f=new Error("Cannot find module '"+o+"'");throw f.code="MODULE_NOT_FOUND",f}var l=n[o]={exports:{}};t[o][0].call(l.exports,function(e){var n=t[o][1][e];return s(n?n:e)},l,l.exports,e,t,n,r)}return n[o].exports}var i=typeof require=="function"&&require;for(var o=0;o<r.length;o++)s(r[o]);return s})({1:[function(require,module,exports){
+(function (global){
 var PageManager = require('./pages/PageManager');
+var ServerDialer = require('./network/ServerDialer');
 
 var app = {
     initialize: function() {
@@ -17,13 +19,21 @@ var app = {
         } else {
             document.body.classList.add('desktop');
         }
-        
+
+        app.connectToServer();
         app.pageManager = new PageManager(document.getElementById('ui'));
+    },
+    
+    connectToServer: function() {
+        if(!global.serverDialer) {
+            global.serverDialer = new ServerDialer();
+        }
     }
 };
 
 app.initialize();
-},{"./pages/PageManager":6}],2:[function(require,module,exports){
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./network/ServerDialer":3,"./pages/PageManager":9}],2:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -67,6 +77,176 @@ CustomEventDispatcher.prototype.dispatchEvent= function(evt) {
 module.exports = CustomEventDispatcher;
 },{}],3:[function(require,module,exports){
 /**
+ * Created by jerek0 on 10/02/2015.
+ */
+    
+var CustomEventDispatcher = require('../events/CustomEventDispatcher');
+var serverConfig = require('./serverConfig');
+
+var ServerDialer = function() {
+    this.init();
+}
+// Héritage de CustomEventDispatcher
+ServerDialer.prototype = new CustomEventDispatcher();
+ServerDialer.prototype.constructor = ServerDialer;
+
+/**
+ * Allows to connect to the game server and start listening for events *
+ */
+ServerDialer.prototype.init =  function() {
+    this.socket = io.connect('http://'+serverConfig.url+':'+serverConfig.port);
+    
+    var scope = this;
+    this.socket
+        .on('connect', function() {
+            console.log(Date() + ' - connectedToServer');
+            scope.dispatchEvent({ type: 'connectedToServer'});
+            scope.disconnected = false;
+        })
+        .on('connect_error', function(data) {
+            if(!scope.disconnected) { // This condition allows to throw only one error
+                scope.disconnected = true;
+                alert(JSON.stringify(data));
+            }
+            console.log(Date()+' - Reconnect failed');
+        });
+    
+    this.bindServerEvents();
+};
+
+/* ########################################### *
+ * ############ SERVER LISTENERS ############# *
+ * ########################################### *
+ */
+
+/**
+ * Server events listener and manager *
+ */
+ServerDialer.prototype.bindServerEvents = function() {
+    var scope = this;
+    this.socket.on('newGameID', function(data) {
+        scope.onNewGameID(data);
+    });
+    this.socket.on('newBridge', function(data) {
+        scope.onNewBridge(data);
+    });
+    this.socket.on('rooms', function(data) {
+        scope.dispatchEvent({ type: 'receivedRooms', data: data.rooms});
+    });
+    this.socket.on('expulsed', function() {
+        scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+        alert('We lost the host !');
+        this.gameID=null;
+    });
+};
+
+/**
+ * Method called when the server answers positively to the room hosting request *
+ * @param data
+ */
+ServerDialer.prototype.onNewGameID = function(data) {
+    console.log('Received game id '+data.gameID);
+    this.gameID = data.gameID;
+};
+
+/**
+ * Method called when we've got a connection between a host and a client *
+ */
+ServerDialer.prototype.onNewBridge = function(data) {
+    this.gameID = data.gameID;
+    console.log('Connection with room '+this.gameID+' established');
+    
+    this.dispatchEvent({ type: 'newBridge' });
+};
+
+/* ########################################### *
+ * ########### SERVER REQUESTS ############### *
+ * ########################################### *
+ * 
+ * For each of these functions, the server's answer
+ * will be catched in this.bindServerEvents()
+ */
+
+/**
+ * Ask the server for the list of rooms *
+ */
+ServerDialer.prototype.askForRooms = function() {
+    this.socket.emit('getRooms');
+};
+
+/**
+ * Send the server a room hosting request *
+ */
+ServerDialer.prototype.hostRoom = function() {
+    this.socket.emit('hostRoom');
+};
+
+/**
+ * Ask the server to join an existing room *
+ * @param id - The existing room id
+ */
+ServerDialer.prototype.joinRoom = function(id) {
+    this.socket.emit('joinRoom', { gameID: id});
+    console.log('Asked to join room '+id);
+};
+
+/**
+ * Ask the server to leave an existing room *
+ */
+ServerDialer.prototype.leaveRoom = function() {
+    this.socket.emit('leaveRoom');
+    this.gameID = null;
+}
+
+module.exports = ServerDialer;
+},{"../events/CustomEventDispatcher":2,"./serverConfig":4}],4:[function(require,module,exports){
+/**
+ * Created by jerek0 on 10/02/2015.
+ */
+
+var serverConfig = {
+    url: "192.168.0.32",
+    port: 9005
+}
+
+module.exports = serverConfig;
+},{}],5:[function(require,module,exports){
+(function (global){
+/**
+ * Created by jerek0 on 08/02/2015.
+ */
+
+var Page = require('./Page');
+
+var ChooseCharacter = function() {
+    // Functions handlers
+    this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
+
+    this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
+    this.setTemplateUrl('templates/choose_character.html');
+};
+
+// Héritage de Page
+ChooseCharacter.prototype = new Page();
+ChooseCharacter.prototype.constructor = ChooseCharacter;
+
+ChooseCharacter.prototype.onPageDisplayed = function() {
+    this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
+
+    // TODO Show btn only when connected to server
+    // TODO Watch Memory Here
+    var scope = this;
+    var btnBack = document.getElementById("btn-back");
+    btnBack.addEventListener('click', function() {
+        scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+        global.serverDialer.leaveRoom();
+    });
+};
+
+module.exports = ChooseCharacter;
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./Page":8}],6:[function(require,module,exports){
+/**
  * Created by jerek0 on 08/02/2015.
  */
 
@@ -85,9 +265,10 @@ HomePage.prototype = new Page();
 HomePage.prototype.constructor = HomePage;
 
 HomePage.prototype.onPageDisplayed = function() {
-    console.log('HomePage template displayed');
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
     
+    // TODO Show btn only when connected to server
+    // TODO Watch Memory Here
     var scope = this;
     var btnPlay = document.getElementById("btn-play");
     btnPlay.addEventListener('click', function() {
@@ -96,7 +277,8 @@ HomePage.prototype.onPageDisplayed = function() {
 };
 
 module.exports = HomePage;
-},{"./Page":5}],4:[function(require,module,exports){
+},{"./Page":8}],7:[function(require,module,exports){
+(function (global){
 /**
  * Created by jerek0 on 09/02/2015.
  */
@@ -106,28 +288,134 @@ var Page = require('./Page');
 var MatchmakingPage = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
+    this.populateRoomsHandler = this.populateRooms.bind(this);
+    this.joinRoomHandler = this.joinRoom.bind(this);
+    this.newHostHandler = this.hostRoom.bind(this);
+    this.askForRoomsHandler = this.askForRooms.bind(this);
+    this.onNewBridgeHandler = this.onNewBridge.bind(this);
 
     this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
     this.setTemplateUrl('templates/matchmaking.html');
 };
-
 // Héritage de Page
 MatchmakingPage.prototype = new Page();
 MatchmakingPage.prototype.constructor = MatchmakingPage;
 
+/**
+ * Function called when view is ready *
+ */
 MatchmakingPage.prototype.onPageDisplayed = function() {
-    console.log('MatchmakingPage template displayed');
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
 
     var scope = this;
     var btnBack = document.getElementById("btn-back");
+    btnBack.innerHTML = localStorage.getItem('PH-tech');
     btnBack.addEventListener('click', function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'TechnoPage' });
     });
+    
+    this.askForRooms();
+    this.bindUiActions();
+};
+
+/**
+ * Function managing UI actions *
+ */
+MatchmakingPage.prototype.bindUiActions = function () {
+    this.btnHost = document.getElementById('btn-host');
+    this.btnHost.addEventListener('click', this.newHostHandler);
+
+    this.btnRefresh = document.getElementById('btn-refresh');
+    this.btnRefresh.addEventListener('click', this.askForRoomsHandler);
+};
+
+MatchmakingPage.prototype.unbindUiActions = function() {
+    this.btnHost.removeEventListener('click', this.newHostHandler);
+    this.btnRefresh.removeEventListener('click', this.askForRoomsHandler);
+    this.destroyRoomChoosing();
+};
+
+/**
+ * Generates the markup of each room available *
+ * @param e - The event containing rooms
+ */
+MatchmakingPage.prototype.populateRooms = function(e) {
+    global.serverDialer.removeEventListener('receivedRooms', this.populateRoomsHandler);
+    
+    // We have rooms available ! YAY !
+    if(e.data.length) {
+        var numberOfRooms = e.data.length,
+            i;
+
+        document.getElementById('rooms-list').innerHTML = '';
+        for(i = 0; i < numberOfRooms; i++) {
+            document.getElementById('rooms-list').innerHTML += '<li data-roomId="'+ e.data[i] +'">Room '+ e.data[i] +'</li>';
+        }
+        
+        // We listen now for a Room choosing
+        this.registerRoomChoosing();
+    } 
+    // We see no room ... :'(
+    else {
+        document.getElementById('rooms-list').innerHTML = '<li>No room available for now ...</li>';
+    }
+};
+
+/**
+ * Listen all the rooms for a click *
+ */
+MatchmakingPage.prototype.registerRoomChoosing = function() {
+    this.rooms = document.querySelectorAll('#rooms-list li');
+    
+    var i;
+    for(i = 0; i < this.rooms.length; i++) {
+        this.rooms[i].addEventListener('click', this.joinRoomHandler);
+    }
+};
+
+/**
+ * Destroy the rooms listeners *
+ */
+MatchmakingPage.prototype.destroyRoomChoosing = function() {
+    var i;
+    for(i = 0; i < this.rooms.length; i++) {
+        this.rooms[i].removeEventListener('click', this.joinRoomHandler);
+    }
+};
+
+MatchmakingPage.prototype.askForRooms = function() {
+    // GET THE ROOMS
+    global.serverDialer.askForRooms();
+    global.serverDialer.addEventListener('receivedRooms', this.populateRoomsHandler);
+};
+
+/**
+ * On click to a room, we join it *
+ * @param e
+ */
+MatchmakingPage.prototype.joinRoom = function(e) {
+    global.serverDialer.joinRoom(e.currentTarget.dataset.roomid);
+    global.serverDialer.addEventListener('newBridge', this.onNewBridgeHandler);
+};
+
+MatchmakingPage.prototype.onNewBridge = function () {
+    global.serverDialer.removeEventListener('newBridge', this.onNewBridgeHandler);
+    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
+    this.unbindUiActions();
+}
+
+/**
+ * On click on the new host button, we notify the server *
+ */
+MatchmakingPage.prototype.hostRoom = function() {
+    global.serverDialer.hostRoom();
+    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
+    this.unbindUiActions();
 };
 
 module.exports = MatchmakingPage;
-},{"./Page":5}],5:[function(require,module,exports){
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./Page":8}],8:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -173,7 +461,8 @@ Page.prototype.loadTemplate = function() {
 }
 
 module.exports = Page;
-},{"../events/CustomEventDispatcher":2}],6:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],9:[function(require,module,exports){
+(function (global){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -181,10 +470,13 @@ module.exports = Page;
 var HomePage = require('./HomePage');
 var TechnoPage = require('./TechnoPage');
 var MatchmakingPage = require('./MatchmakingPage');
+var ChooseCharacterPage = require('./ChooseCharacterPage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
     this.changePage('HomePage');
+
+    global.serverDialer.addEventListener('changePage', this.onChangePageHandler);
 };
 
 PageManager.prototype.changePage = function(newPage) {
@@ -203,6 +495,9 @@ PageManager.prototype.changePage = function(newPage) {
             break;
         case "MatchmakingPage":
             this.currentPage = new MatchmakingPage();
+            break;
+        case "ChooseCharacterPage":
+            this.currentPage = new ChooseCharacterPage();
             break;
         default:
             this.currentPage = new HomePage();
@@ -235,7 +530,8 @@ PageManager.prototype.updateView = function(template) {
 };
 
 module.exports = PageManager;
-},{"./HomePage":3,"./MatchmakingPage":4,"./TechnoPage":7}],7:[function(require,module,exports){
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./ChooseCharacterPage":5,"./HomePage":6,"./MatchmakingPage":7,"./TechnoPage":10}],10:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -255,7 +551,6 @@ TechnoPage.prototype = new Page();
 TechnoPage.prototype.constructor = TechnoPage;
 
 TechnoPage.prototype.onPageDisplayed = function() {
-    console.log('TechnoPage template displayed');
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
     
     this.bindUiEvents();
@@ -289,26 +584,13 @@ TechnoPage.prototype.destroyTechnoChoosing = function() {
     for(i = 0; i < numberOfTechnos; i++) {
         this.technoChoosers[i].removeEventListener('click', this.chooseTechnoHandler);
     }
-}
+};
 
 TechnoPage.prototype.chooseTechno = function() {
     localStorage.setItem('PH-tech', event.target.dataset.tech);
     this.destroyTechnoChoosing();
-    
-    switch(localStorage.getItem('PH-tech')) {
-        case 'keys':
-        case 'gyro':
-            this.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
-            break;
-        case 'desktop-remote':
-        case 'mobile-remote':
-            this.dispatchEvent({ type: 'changePage', newPage: 'SyncPage' });
-            break;
-        default:
-            alert('What you want ?');
-            break;
-    }
-}
+    this.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+};
 
 module.exports = TechnoPage;
-},{"./Page":5}]},{},[1]);
+},{"./Page":8}]},{},[1]);

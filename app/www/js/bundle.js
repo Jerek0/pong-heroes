@@ -19,9 +19,9 @@ var app = {
         } else {
             document.body.classList.add('desktop');
         }
-        
-        app.pageManager = new PageManager(document.getElementById('ui'));
+
         app.connectToServer();
+        app.pageManager = new PageManager(document.getElementById('ui'));
     },
     
     connectToServer: function() {
@@ -90,65 +90,113 @@ var ServerDialer = function() {
 ServerDialer.prototype = new CustomEventDispatcher();
 ServerDialer.prototype.constructor = ServerDialer;
 
+/**
+ * Allows to connect to the game server and start listening for events *
+ */
 ServerDialer.prototype.init =  function() {
     this.socket = io.connect('http://'+serverConfig.url+':'+serverConfig.port);
     
     var scope = this;
     this.socket
         .on('connect', function() {
-            console.log('connectedToServer');
+            console.log(Date() + ' - connectedToServer');
             scope.dispatchEvent({ type: 'connectedToServer'});
+            scope.disconnected = false;
         })
         .on('connect_error', function(data) {
-            alert(JSON.stringify(data));
-            console.log(data);
+            if(!scope.disconnected) { // This condition allows to throw only one error
+                scope.disconnected = true;
+                alert(JSON.stringify(data));
+            }
+            console.log(Date()+' - Reconnect failed');
         });
     
     this.bindServerEvents();
 };
 
-ServerDialer.prototype.askForRooms = function() {
-    var scope = this;
-    this.socket.emit('getRooms');
-    this.socket.on('rooms', function(data) {
-       scope.dispatchEvent({ type: 'receivedRooms', data: data.rooms});
-    });
-};
+/* ########################################### *
+ * ############ SERVER LISTENERS ############# *
+ * ########################################### *
+ */
 
-ServerDialer.prototype.newHost = function() {
-    this.socket.emit('newHosting');
-};
-
-ServerDialer.prototype.newJoin = function(id) {
-    this.socket.emit('joinHosting', { gameID: id});
-    console.log('Joining '+id);
-    this.gameID = id;
-};
-
-ServerDialer.prototype.leaveRoom = function() {
-    this.socket.emit('leaveRoom');
-    this.gameID = null;
-}
-
-ServerDialer.prototype.onNewGameID = function(data) {
-    console.log('Received game id '+data.gameID);
-    this.gameID = data.gameID;
-};
-
-ServerDialer.prototype.onNewBridge = function() {
-    console.log('connection established');
-};
-
+/**
+ * Server events listener and manager *
+ */
 ServerDialer.prototype.bindServerEvents = function() {
     var scope = this;
     this.socket.on('newGameID', function(data) {
         scope.onNewGameID(data);
     });
-    this.socket.on('newBridge', function() {
-        console.log('newBridge');
-        scope.onNewBridge();
+    this.socket.on('newBridge', function(data) {
+        scope.onNewBridge(data);
+    });
+    this.socket.on('rooms', function(data) {
+        scope.dispatchEvent({ type: 'receivedRooms', data: data.rooms});
+    });
+    this.socket.on('expulsed', function() {
+        scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+        alert('We lost the host !');
+        this.gameID=null;
     });
 };
+
+/**
+ * Method called when the server answers positively to the room hosting request *
+ * @param data
+ */
+ServerDialer.prototype.onNewGameID = function(data) {
+    console.log('Received game id '+data.gameID);
+    this.gameID = data.gameID;
+};
+
+/**
+ * Method called when we've got a connection between a host and a client *
+ */
+ServerDialer.prototype.onNewBridge = function(data) {
+    this.gameID = data.gameID;
+    console.log('Connection with room '+this.gameID+' established');
+    
+    this.dispatchEvent({ type: 'newBridge' });
+};
+
+/* ########################################### *
+ * ########### SERVER REQUESTS ############### *
+ * ########################################### *
+ * 
+ * For each of these functions, the server's answer
+ * will be catched in this.bindServerEvents()
+ */
+
+/**
+ * Ask the server for the list of rooms *
+ */
+ServerDialer.prototype.askForRooms = function() {
+    this.socket.emit('getRooms');
+};
+
+/**
+ * Send the server a room hosting request *
+ */
+ServerDialer.prototype.hostRoom = function() {
+    this.socket.emit('hostRoom');
+};
+
+/**
+ * Ask the server to join an existing room *
+ * @param id - The existing room id
+ */
+ServerDialer.prototype.joinRoom = function(id) {
+    this.socket.emit('joinRoom', { gameID: id});
+    console.log('Asked to join room '+id);
+};
+
+/**
+ * Ask the server to leave an existing room *
+ */
+ServerDialer.prototype.leaveRoom = function() {
+    this.socket.emit('leaveRoom');
+    this.gameID = null;
+}
 
 module.exports = ServerDialer;
 },{"../events/CustomEventDispatcher":2,"./serverConfig":4}],4:[function(require,module,exports){
@@ -157,7 +205,7 @@ module.exports = ServerDialer;
  */
 
 var serverConfig = {
-    url: "127.0.0.1",
+    url: "192.168.0.32",
     port: 9005
 }
 
@@ -242,7 +290,7 @@ var MatchmakingPage = function() {
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
     this.populateRoomsHandler = this.populateRooms.bind(this);
     this.joinRoomHandler = this.joinRoom.bind(this);
-    this.newHostHandler = this.newHost.bind(this);
+    this.newHostHandler = this.hostRoom.bind(this);
     this.askForRoomsHandler = this.askForRooms.bind(this);
     this.onNewBridgeHandler = this.onNewBridge.bind(this);
 
@@ -346,7 +394,7 @@ MatchmakingPage.prototype.askForRooms = function() {
  * @param e
  */
 MatchmakingPage.prototype.joinRoom = function(e) {
-    global.serverDialer.newJoin(e.currentTarget.dataset.roomid);
+    global.serverDialer.joinRoom(e.currentTarget.dataset.roomid);
     global.serverDialer.addEventListener('newBridge', this.onNewBridgeHandler);
 };
 
@@ -359,8 +407,8 @@ MatchmakingPage.prototype.onNewBridge = function () {
 /**
  * On click on the new host button, we notify the server *
  */
-MatchmakingPage.prototype.newHost = function() {
-    global.serverDialer.newHost();
+MatchmakingPage.prototype.hostRoom = function() {
+    global.serverDialer.hostRoom();
     this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
     this.unbindUiActions();
 };
@@ -414,6 +462,7 @@ Page.prototype.loadTemplate = function() {
 
 module.exports = Page;
 },{"../events/CustomEventDispatcher":2}],9:[function(require,module,exports){
+(function (global){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -426,6 +475,8 @@ var ChooseCharacterPage = require('./ChooseCharacterPage');
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
     this.changePage('HomePage');
+
+    global.serverDialer.addEventListener('changePage', this.onChangePageHandler);
 };
 
 PageManager.prototype.changePage = function(newPage) {
@@ -479,6 +530,7 @@ PageManager.prototype.updateView = function(template) {
 };
 
 module.exports = PageManager;
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"./ChooseCharacterPage":5,"./HomePage":6,"./MatchmakingPage":7,"./TechnoPage":10}],10:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.

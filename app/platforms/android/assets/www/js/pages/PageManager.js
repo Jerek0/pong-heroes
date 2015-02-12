@@ -5,10 +5,13 @@
 var HomePage = require('./HomePage');
 var TechnoPage = require('./TechnoPage');
 var MatchmakingPage = require('./MatchmakingPage');
+var ChooseCharacterPage = require('./ChooseCharacterPage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
     this.changePage('HomePage');
+
+    global.serverDialer.addEventListener('changePage', this.onChangePageHandler);
 };
 
 PageManager.prototype.changePage = function(newPage) {
@@ -27,6 +30,9 @@ PageManager.prototype.changePage = function(newPage) {
             break;
         case "MatchmakingPage":
             this.currentPage = new MatchmakingPage();
+            break;
+        case "ChooseCharacterPage":
+            this.currentPage = new ChooseCharacterPage();
             break;
         default:
             this.currentPage = new HomePage();
