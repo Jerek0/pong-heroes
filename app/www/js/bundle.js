@@ -127,8 +127,11 @@ ServerDialer.prototype.bindServerEvents = function() {
     this.socket.on('newGameID', function(data) {
         scope.onNewGameID(data);
     });
-    this.socket.on('newBridge', function(data) {
-        scope.onNewBridge(data);
+    this.socket.on('newBridge', function() {
+        scope.onNewBridge();
+    });
+    this.socket.on('connected', function(data) {
+        scope.onConnected(data);
     });
     this.socket.on('rooms', function(data) {
         scope.dispatchEvent({ type: 'receivedRooms', data: data.rooms});
@@ -152,11 +155,17 @@ ServerDialer.prototype.onNewGameID = function(data) {
 /**
  * Method called when we've got a connection between a host and a client *
  */
-ServerDialer.prototype.onNewBridge = function(data) {
+ServerDialer.prototype.onNewBridge = function() {
+    console.log('BRIDGE !');
+};
+
+/**
+ * Method called when we've got a connection between a host and a client *
+ */
+ServerDialer.prototype.onConnected = function(data) {
     this.gameID = data.gameID;
     console.log('Connection with room '+this.gameID+' established');
-    
-    this.dispatchEvent({ type: 'newBridge' });
+    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
 };
 
 /* ########################################### *
@@ -292,7 +301,6 @@ var MatchmakingPage = function() {
     this.joinRoomHandler = this.joinRoom.bind(this);
     this.newHostHandler = this.hostRoom.bind(this);
     this.askForRoomsHandler = this.askForRooms.bind(this);
-    this.onNewBridgeHandler = this.onNewBridge.bind(this);
 
     this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
     this.setTemplateUrl('templates/matchmaking.html');
@@ -352,13 +360,14 @@ MatchmakingPage.prototype.populateRooms = function(e) {
             document.getElementById('rooms-list').innerHTML += '<li data-roomId="'+ e.data[i] +'">Room '+ e.data[i] +'</li>';
         }
         
-        // We listen now for a Room choosing
-        this.registerRoomChoosing();
     } 
     // We see no room ... :'(
     else {
         document.getElementById('rooms-list').innerHTML = '<li>No room available for now ...</li>';
     }
+
+    // We listen now for a Room choosing
+    this.registerRoomChoosing();
 };
 
 /**
@@ -383,6 +392,11 @@ MatchmakingPage.prototype.destroyRoomChoosing = function() {
     }
 };
 
+/* ########################################### *
+ * ############# SERVER REQUESTS ############# *
+ * ########################################### *
+ */
+
 MatchmakingPage.prototype.askForRooms = function() {
     // GET THE ROOMS
     global.serverDialer.askForRooms();
@@ -390,19 +404,12 @@ MatchmakingPage.prototype.askForRooms = function() {
 };
 
 /**
- * On click to a room, we join it *
+ * On click to a room, we try to join it *
  * @param e
  */
 MatchmakingPage.prototype.joinRoom = function(e) {
     global.serverDialer.joinRoom(e.currentTarget.dataset.roomid);
-    global.serverDialer.addEventListener('newBridge', this.onNewBridgeHandler);
 };
-
-MatchmakingPage.prototype.onNewBridge = function () {
-    global.serverDialer.removeEventListener('newBridge', this.onNewBridgeHandler);
-    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
-    this.unbindUiActions();
-}
 
 /**
  * On click on the new host button, we notify the server *
@@ -458,7 +465,11 @@ Page.prototype.loadTemplate = function() {
             }
         }
     }
-}
+};
+
+Page.prototype.unbindUiActions = function() {
+    // Function to override !
+};
 
 module.exports = Page;
 },{"../events/CustomEventDispatcher":2}],9:[function(require,module,exports){
@@ -485,6 +496,8 @@ PageManager.prototype.changePage = function(newPage) {
     // Function handlers
     this.onTemplateLoadedHandler = this.onTemplateLoaded.bind(this);
     this.onChangePageHandler = this.onChangePage.bind(this);
+    
+    if(this.currentPage) this.currentPage.unbindUiActions();
 
     switch (newPage) {
         case "HomePage":

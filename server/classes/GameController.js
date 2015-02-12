@@ -19,7 +19,9 @@ var GameController = function(io) {
             this.client = socket;
 
             // Inform everyone in the room that there is a new connection between them
-            this.io.sockets.in(this.gameID).emit('newBridge', { gameID: this.gameID });
+            this.io.sockets.in(this.gameID).emit('newBridge');
+
+            this.client.emit('connected', { gameID: this.gameID });
             
             return true;
         } else {

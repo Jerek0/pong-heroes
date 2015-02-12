@@ -89,7 +89,7 @@ var ServerManager = {
      * @param socket
      */
     leaveRoom: function(socket) {
-        if(socket) {
+        if(socket && this.gameControllers[socket.gameID]) {
             socket.leave(socket.gameID); // We cut off the link w/ the room
             this.gameControllers[socket.gameID].removeClient(); // It's either the host, either the client that quits, in any case, the client is removed from the gameController
             if (this.io.sockets.adapter.rooms[socket.gameID] == undefined || socket == this.gameControllers[socket.gameID].getHost()) {

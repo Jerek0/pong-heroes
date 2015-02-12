@@ -49,8 +49,11 @@ ServerDialer.prototype.bindServerEvents = function() {
     this.socket.on('newGameID', function(data) {
         scope.onNewGameID(data);
     });
-    this.socket.on('newBridge', function(data) {
-        scope.onNewBridge(data);
+    this.socket.on('newBridge', function() {
+        scope.onNewBridge();
+    });
+    this.socket.on('connected', function(data) {
+        scope.onConnected(data);
     });
     this.socket.on('rooms', function(data) {
         scope.dispatchEvent({ type: 'receivedRooms', data: data.rooms});
@@ -74,11 +77,17 @@ ServerDialer.prototype.onNewGameID = function(data) {
 /**
  * Method called when we've got a connection between a host and a client *
  */
-ServerDialer.prototype.onNewBridge = function(data) {
+ServerDialer.prototype.onNewBridge = function() {
+    console.log('BRIDGE !');
+};
+
+/**
+ * Method called when we've got a connection between a host and a client *
+ */
+ServerDialer.prototype.onConnected = function(data) {
     this.gameID = data.gameID;
     console.log('Connection with room '+this.gameID+' established');
-    
-    this.dispatchEvent({ type: 'newBridge' });
+    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
 };
 
 /* ########################################### *

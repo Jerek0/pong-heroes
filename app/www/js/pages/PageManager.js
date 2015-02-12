@@ -20,6 +20,8 @@ PageManager.prototype.changePage = function(newPage) {
     // Function handlers
     this.onTemplateLoadedHandler = this.onTemplateLoaded.bind(this);
     this.onChangePageHandler = this.onChangePage.bind(this);
+    
+    if(this.currentPage) this.currentPage.unbindUiActions();
 
     switch (newPage) {
         case "HomePage":
