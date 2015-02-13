@@ -141,6 +141,13 @@ ServerDialer.prototype.bindServerEvents = function() {
         alert('We lost the host !');
         this.gameID=null;
     });
+    this.socket.on('otherPlayerReady', function() {
+        scope.otherPlayerReady = true;
+        scope.dispatchEvent({ type: 'otherPlayerReady' });
+    });
+    this.socket.on('launchGame', function() {
+        scope.dispatchEvent({ type: 'launchGame' });
+    });
 };
 
 /**
@@ -207,6 +214,15 @@ ServerDialer.prototype.leaveRoom = function() {
     this.gameID = null;
 }
 
+/**
+ * Inform the server of our character pick *
+ * @param id - The character id
+ */
+ServerDialer.prototype.chooseCharacter = function(id) {
+    this.socket.emit('chooseCharacter', { characterID: id });
+    this.dispatchEvent({ type: "changePage", newPage: "GamePage" });
+};
+
 module.exports = ServerDialer;
 },{"../events/CustomEventDispatcher":2,"./serverConfig":4}],4:[function(require,module,exports){
 /**
@@ -214,7 +230,7 @@ module.exports = ServerDialer;
  */
 
 var serverConfig = {
-    url: "192.168.0.32",
+    url: "127.0.0.1",
     port: 9005
 }
 
@@ -230,6 +246,7 @@ var Page = require('./Page');
 var ChooseCharacter = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
+    this.chooseCharacterHandler = this.chooseCharacter.bind(this);
 
     this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
     this.setTemplateUrl('templates/choose_character.html');
@@ -250,6 +267,36 @@ ChooseCharacter.prototype.onPageDisplayed = function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
         global.serverDialer.leaveRoom();
     });
+    
+    this.bindUiActions();
+};
+
+ChooseCharacter.prototype.bindUiActions = function() {
+    this.registerCharacterChoosing();  
+};
+
+ChooseCharacter.prototype.unbindUiActions = function() {
+    this.destroyCharacterChoosing();
+};
+
+ChooseCharacter.prototype.registerCharacterChoosing = function() {
+    this.characters = document.querySelectorAll('#characters-list .character');
+
+    var i;
+    for(i = 0; i < this.characters.length; i++) {
+        this.characters[i].addEventListener('click', this.chooseCharacterHandler);
+    }
+};
+
+ChooseCharacter.prototype.destroyCharacterChoosing = function() {
+    var i;
+    for(i = 0; i < this.characters.length; i++) {
+        this.characters[i].removeEventListener('click', this.chooseCharacterHandler);
+    }
+};
+
+ChooseCharacter.prototype.chooseCharacter = function(e) {
+    global.serverDialer.chooseCharacter(e.currentTarget.dataset.character);
 };
 
 module.exports = ChooseCharacter;

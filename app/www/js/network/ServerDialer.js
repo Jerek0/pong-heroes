@@ -63,6 +63,13 @@ ServerDialer.prototype.bindServerEvents = function() {
         alert('We lost the host !');
         this.gameID=null;
     });
+    this.socket.on('otherPlayerReady', function() {
+        scope.otherPlayerReady = true;
+        scope.dispatchEvent({ type: 'otherPlayerReady' });
+    });
+    this.socket.on('launchGame', function() {
+        scope.dispatchEvent({ type: 'launchGame' });
+    });
 };
 
 /**
@@ -128,5 +135,14 @@ ServerDialer.prototype.leaveRoom = function() {
     this.socket.emit('leaveRoom');
     this.gameID = null;
 }
+
+/**
+ * Inform the server of our character pick *
+ * @param id - The character id
+ */
+ServerDialer.prototype.chooseCharacter = function(id) {
+    this.socket.emit('chooseCharacter', { characterID: id });
+    this.dispatchEvent({ type: "changePage", newPage: "GamePage" });
+};
 
 module.exports = ServerDialer;

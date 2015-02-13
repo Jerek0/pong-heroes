@@ -6,6 +6,8 @@
 var GameController = function(io) {
     this.io = io;
     
+    // TODO Manage character choosing and game launch
+    
     this.init = function(gameID) {
         this.gameID = gameID;
     };
