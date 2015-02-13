@@ -20,7 +20,6 @@ ChooseCharacter.prototype.constructor = ChooseCharacter;
 ChooseCharacter.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
 
-    // TODO Show btn only when connected to server
     // TODO Watch Memory Here
     var scope = this;
     var btnBack = document.getElementById("btn-back");

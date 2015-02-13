@@ -33,7 +33,7 @@ var app = {
 
 app.initialize();
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./network/ServerDialer":3,"./pages/PageManager":9}],2:[function(require,module,exports){
+},{"./network/ServerDialer":3,"./pages/PageManager":10}],2:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -259,7 +259,6 @@ ChooseCharacter.prototype.constructor = ChooseCharacter;
 ChooseCharacter.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
 
-    // TODO Show btn only when connected to server
     // TODO Watch Memory Here
     var scope = this;
     var btnBack = document.getElementById("btn-back");
@@ -301,7 +300,71 @@ ChooseCharacter.prototype.chooseCharacter = function(e) {
 
 module.exports = ChooseCharacter;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":8}],6:[function(require,module,exports){
+},{"./Page":9}],6:[function(require,module,exports){
+(function (global){
+/**
+ * Created by jerek0 on 13/02/2015.
+ */
+
+var Page = require('./Page');
+
+var GamePage = function() {
+    // Functions handlers
+    this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
+    this.onOtherPlayerReadyHandler = this.onOtherPlayerReady.bind(this);
+    this.launchGameHandler = this.launchGame.bind(this);
+
+    this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
+    this.setTemplateUrl('templates/game.html');
+};
+
+// Héritage de Page
+GamePage.prototype = new Page();
+GamePage.prototype.constructor = GamePage;
+
+GamePage.prototype.onPageDisplayed = function() {
+    this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
+
+    // TODO Watch Memory Here
+    var scope = this;
+    var btnBack = document.getElementById("btn-back");
+    btnBack.addEventListener('click', function() {
+        scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+        global.serverDialer.leaveRoom();
+    });
+
+    this.registerSync();
+};
+
+GamePage.prototype.registerSync = function() {
+    if(!global.serverDialer.otherPlayerReady) {
+        global.serverDialer.addEventListener('otherPlayerReady', this.onOtherPlayerReadyHandler);
+    } else {
+        this.onOtherPlayerReady();
+    }
+};
+
+GamePage.prototype.onOtherPlayerReady = function() {
+    global.serverDialer.removeEventListener('otherPlayerReady', this.onOtherPlayerReadyHandler);
+    
+    document.getElementById("message").innerHTML = "Synced !";
+    global.serverDialer.addEventListener('launchGame', this.launchGameHandler);
+};
+
+GamePage.prototype.launchGame = function () {
+    global.serverDialer.removeEventListener('launchGame', this.launchGameHandler);
+    document.getElementById("message").innerHTML = "GO !";
+};
+
+GamePage.prototype.unbindUiActions = function() {
+    global.serverDialer.removeEventListener('otherPlayerReady', this.onOtherPlayerReadyHandler);
+    global.serverDialer.removeEventListener('launchGame', this.launchGameHandler);
+};
+
+module.exports = GamePage;
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./Page":9}],7:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -333,7 +396,7 @@ HomePage.prototype.onPageDisplayed = function() {
 };
 
 module.exports = HomePage;
-},{"./Page":8}],7:[function(require,module,exports){
+},{"./Page":9}],8:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 09/02/2015.
@@ -469,7 +532,7 @@ MatchmakingPage.prototype.hostRoom = function() {
 
 module.exports = MatchmakingPage;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":8}],8:[function(require,module,exports){
+},{"./Page":9}],9:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -519,7 +582,7 @@ Page.prototype.unbindUiActions = function() {
 };
 
 module.exports = Page;
-},{"../events/CustomEventDispatcher":2}],9:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],10:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -529,6 +592,7 @@ var HomePage = require('./HomePage');
 var TechnoPage = require('./TechnoPage');
 var MatchmakingPage = require('./MatchmakingPage');
 var ChooseCharacterPage = require('./ChooseCharacterPage');
+var GamePage = require('./GamePage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
@@ -558,6 +622,9 @@ PageManager.prototype.changePage = function(newPage) {
             break;
         case "ChooseCharacterPage":
             this.currentPage = new ChooseCharacterPage();
+            break;
+        case "GamePage":
+            this.currentPage = new GamePage();
             break;
         default:
             this.currentPage = new HomePage();
@@ -591,7 +658,7 @@ PageManager.prototype.updateView = function(template) {
 
 module.exports = PageManager;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ChooseCharacterPage":5,"./HomePage":6,"./MatchmakingPage":7,"./TechnoPage":10}],10:[function(require,module,exports){
+},{"./ChooseCharacterPage":5,"./GamePage":6,"./HomePage":7,"./MatchmakingPage":8,"./TechnoPage":11}],11:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -653,4 +720,4 @@ TechnoPage.prototype.chooseTechno = function() {
 };
 
 module.exports = TechnoPage;
-},{"./Page":8}]},{},[1]);
+},{"./Page":9}]},{},[1]);

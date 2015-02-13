@@ -6,6 +6,7 @@ var HomePage = require('./HomePage');
 var TechnoPage = require('./TechnoPage');
 var MatchmakingPage = require('./MatchmakingPage');
 var ChooseCharacterPage = require('./ChooseCharacterPage');
+var GamePage = require('./GamePage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
@@ -35,6 +36,9 @@ PageManager.prototype.changePage = function(newPage) {
             break;
         case "ChooseCharacterPage":
             this.currentPage = new ChooseCharacterPage();
+            break;
+        case "GamePage":
+            this.currentPage = new GamePage();
             break;
         default:
             this.currentPage = new HomePage();
