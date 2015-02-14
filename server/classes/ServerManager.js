@@ -57,14 +57,14 @@ var ServerManager = {
 
         socket.on('leaveRoom', function() {
             if(socket.gameID)
-                scope.leaveRoom(socket);
+                scope.deleteRoom(socket.gameID);
         })
 
         socket.on('disconnect', function() {
             scope.log('Someone disconnected');
 
             if(socket.gameID)
-                scope.leaveRoom(socket);
+                scope.deleteRoom(socket.gameID);
         });
     },
 
@@ -76,8 +76,8 @@ var ServerManager = {
         for(var i=0; i<this.playableRooms.length; i++) { // We search for the room
             if(this.playableRooms[i]==gameID) { // Got the room !
                 this.playableRooms.splice(i,1); // We remove the room from the available rooms list
-                this.leaveRoom(this.gameControllers[gameID].getClient()); // We remove the clients links w/ the room
                 this.gameControllers[gameID].expulse(); // We expulse the clients and notify them
+                this.leaveRoom(this.gameControllers[gameID].getClient()); // We remove the clients links w/ the room
                 this.gameControllers[gameID] = null; // We remove the room controller definitely
                 this.log("Deleted room "+gameID); // We log the server
             }
@@ -151,7 +151,7 @@ var ServerManager = {
         socket.room = this.io.sockets.adapter.rooms[socket.gameID];
 
         // Check if the room exists
-        if(socket.room!=undefined) {
+        if(socket.room!=undefined && this.gameControllers[socket.gameID]) {
             socket.join(socket.gameID);
             if(this.gameControllers[socket.gameID].setClient(socket)) {
                 this.log('Join attempt on game '+data.gameID+' is a success');

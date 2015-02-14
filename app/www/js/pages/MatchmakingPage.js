@@ -126,8 +126,7 @@ MatchmakingPage.prototype.joinRoom = function(e) {
  */
 MatchmakingPage.prototype.hostRoom = function() {
     global.serverDialer.hostRoom();
-    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
-    this.unbindUiActions();
+    this.dispatchEvent({ type: 'changePage', newPage: 'GamePage' });
 };
 
 module.exports = MatchmakingPage;

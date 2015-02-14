@@ -60,7 +60,7 @@ ServerDialer.prototype.bindServerEvents = function() {
     });
     this.socket.on('expulsed', function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
-        alert('We lost the host !');
+        alert('A player has quit ! Leaving the room');
         this.gameID=null;
     });
     this.socket.on('otherPlayerReady', function() {
@@ -94,7 +94,7 @@ ServerDialer.prototype.onNewBridge = function() {
 ServerDialer.prototype.onConnected = function(data) {
     this.gameID = data.gameID;
     console.log('Connection with room '+this.gameID+' established');
-    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
+    this.dispatchEvent({ type: 'changePage', newPage: 'GamePage' });
 };
 
 /* ########################################### *
@@ -134,15 +134,6 @@ ServerDialer.prototype.joinRoom = function(id) {
 ServerDialer.prototype.leaveRoom = function() {
     this.socket.emit('leaveRoom');
     this.gameID = null;
-}
-
-/**
- * Inform the server of our character pick *
- * @param id - The character id
- */
-ServerDialer.prototype.chooseCharacter = function(id) {
-    this.socket.emit('chooseCharacter', { characterID: id });
-    this.dispatchEvent({ type: "changePage", newPage: "GamePage" });
 };
 
 module.exports = ServerDialer;

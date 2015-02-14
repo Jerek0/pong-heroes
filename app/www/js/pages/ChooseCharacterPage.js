@@ -56,7 +56,8 @@ ChooseCharacter.prototype.destroyCharacterChoosing = function() {
 };
 
 ChooseCharacter.prototype.chooseCharacter = function(e) {
-    global.serverDialer.chooseCharacter(e.currentTarget.dataset.character);
+    localStorage.setItem('PH-character', e.currentTarget.dataset.character);
+    this.dispatchEvent({ type: "changePage", newPage: "MatchmakingPage" });
 };
 
 module.exports = ChooseCharacter;

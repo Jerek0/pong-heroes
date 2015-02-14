@@ -138,7 +138,7 @@ ServerDialer.prototype.bindServerEvents = function() {
     });
     this.socket.on('expulsed', function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
-        alert('We lost the host !');
+        alert('A player has quit ! Leaving the room');
         this.gameID=null;
     });
     this.socket.on('otherPlayerReady', function() {
@@ -172,7 +172,7 @@ ServerDialer.prototype.onNewBridge = function() {
 ServerDialer.prototype.onConnected = function(data) {
     this.gameID = data.gameID;
     console.log('Connection with room '+this.gameID+' established');
-    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
+    this.dispatchEvent({ type: 'changePage', newPage: 'GamePage' });
 };
 
 /* ########################################### *
@@ -212,15 +212,6 @@ ServerDialer.prototype.joinRoom = function(id) {
 ServerDialer.prototype.leaveRoom = function() {
     this.socket.emit('leaveRoom');
     this.gameID = null;
-}
-
-/**
- * Inform the server of our character pick *
- * @param id - The character id
- */
-ServerDialer.prototype.chooseCharacter = function(id) {
-    this.socket.emit('chooseCharacter', { characterID: id });
-    this.dispatchEvent({ type: "changePage", newPage: "GamePage" });
 };
 
 module.exports = ServerDialer;
@@ -295,7 +286,8 @@ ChooseCharacter.prototype.destroyCharacterChoosing = function() {
 };
 
 ChooseCharacter.prototype.chooseCharacter = function(e) {
-    global.serverDialer.chooseCharacter(e.currentTarget.dataset.character);
+    localStorage.setItem('PH-character', e.currentTarget.dataset.character);
+    this.dispatchEvent({ type: "changePage", newPage: "MatchmakingPage" });
 };
 
 module.exports = ChooseCharacter;
@@ -329,7 +321,7 @@ GamePage.prototype.onPageDisplayed = function() {
     var scope = this;
     var btnBack = document.getElementById("btn-back");
     btnBack.addEventListener('click', function() {
-        scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+        //scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
         global.serverDialer.leaveRoom();
     });
 
@@ -526,8 +518,7 @@ MatchmakingPage.prototype.joinRoom = function(e) {
  */
 MatchmakingPage.prototype.hostRoom = function() {
     global.serverDialer.hostRoom();
-    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
-    this.unbindUiActions();
+    this.dispatchEvent({ type: 'changePage', newPage: 'GamePage' });
 };
 
 module.exports = MatchmakingPage;
@@ -716,7 +707,7 @@ TechnoPage.prototype.destroyTechnoChoosing = function() {
 TechnoPage.prototype.chooseTechno = function() {
     localStorage.setItem('PH-tech', event.target.dataset.tech);
     this.destroyTechnoChoosing();
-    this.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
 };
 
 module.exports = TechnoPage;

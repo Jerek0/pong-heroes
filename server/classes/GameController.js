@@ -5,74 +5,63 @@
 // Une instance par paire desktop / mobile
 var GameController = function(io) {
     this.io = io;
-    
+}
+
+GameController.prototype.init = function(gameID) {
+    this.gameID = gameID;
+
+    this.client = {
+        socket: null,
+        character: null
+    };
+    this.host = {
+        socket: null,
+        character: null
+    };
+};
+
+GameController.prototype.setHost = function(socket) {
     var scope = this;
     
-    // TODO Manage character choosing and game launch
-    
-    this.init = function(gameID) {
-        this.gameID = gameID;
+    this.host = {
+        socket: socket
+    };
+};
 
+GameController.prototype.setClient = function(socket) {
+    var scope = this;
+    
+    if(!this.client.socket) {
         this.client = {
-            socket: null,
+            socket: socket,
             character: null
         };
-        this.host = {
-            socket: null,
-            character: null
-        };
-    };
 
-    this.setHost = function(socket) {
-        this.host = {
-            socket: socket
-        };
-        
-        // LISTEN FOR HOST CHOOSING CHARACTER
-        this.host.socket.on('chooseCharacter', function(data) {
-            scope.host.character = data.characterID;
-            if(scope.client.socket) scope.client.socket.emit('otherPlayerReady');
-        })
-    };
+        // Inform everyone in the room that there is a new connection between them
+        this.io.sockets.in(this.gameID).emit('newBridge');
 
-    this.setClient = function(socket) {
-        if(!this.client.socket) {
-            this.client = {
-                socket: socket,
-                character: null
-            };
+        this.client.socket.emit('connected', { gameID: this.gameID });
 
-            // Inform everyone in the room that there is a new connection between them
-            this.io.sockets.in(this.gameID).emit('newBridge');
-
-            this.client.socket.emit('connected', { gameID: this.gameID });
-
-            // LISTEN FOR CLIENT CHOOSING CHARACTER
-            this.client.socket.on('chooseCharacter', function(data) {
-                scope.client.character = data.characterID;
-                if(scope.host.socket) scope.host.socket.emit('otherPlayerReady');
-            });
-            
-            return true;
-        } else {
-            return false;
-        }
-    };
-    
-    this.removeClient = function() {
-        this.client.socket = null;
-    };
-    
-    this.expulse = function() {
-        this.io.sockets.in(this.gameID).emit('expulsed');
+        return true;
+    } else {
+        return false;
     }
-    
-    this.getHost = function() {
-        return this.host.socket;
-    }
-    this.getClient = function() {
-        return this.client.socket;
-    }
+};
+
+GameController.prototype.removeClient = function() {
+    this.client.socket = null;
+};
+
+GameController.prototype.expulse = function() {
+    this.io.sockets.in(this.gameID).emit('expulsed');
+};
+
+GameController.prototype.getHost = function() {
+    return this.host.socket;
+};
+
+GameController.prototype.getClient = function() {
+    return this.client.socket;
 };
 
 module.exports = GameController;
