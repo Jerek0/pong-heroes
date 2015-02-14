@@ -20,21 +20,18 @@ GameController.prototype.init = function(gameID) {
     };
 };
 
-GameController.prototype.setHost = function(socket) {
-    var scope = this;
-    
+GameController.prototype.setHost = function(socket, character) {
     this.host = {
-        socket: socket
+        socket: socket,
+        character: character
     };
 };
 
-GameController.prototype.setClient = function(socket) {
-    var scope = this;
-    
+GameController.prototype.setClient = function(socket, character) {
     if(!this.client.socket) {
         this.client = {
             socket: socket,
-            character: null
+            character: character
         };
 
         // Inform everyone in the room that there is a new connection between them
@@ -48,13 +45,15 @@ GameController.prototype.setClient = function(socket) {
     }
 };
 
-GameController.prototype.removeClient = function() {
-    this.client.socket = null;
-};
-
 GameController.prototype.expulse = function() {
     this.io.sockets.in(this.gameID).emit('expulsed');
 };
+
+GameController.prototype.close = function() {
+    this.expulse();
+    this.client.socket = null;
+    this.host.socket = null;
+}
 
 GameController.prototype.getHost = function() {
     return this.host.socket;

@@ -116,7 +116,7 @@ ServerDialer.prototype.askForRooms = function() {
  * Send the server a room hosting request *
  */
 ServerDialer.prototype.hostRoom = function() {
-    this.socket.emit('hostRoom');
+    this.socket.emit('hostRoom', { character: localStorage.getItem('PH-character')});
 };
 
 /**
@@ -124,7 +124,7 @@ ServerDialer.prototype.hostRoom = function() {
  * @param id - The existing room id
  */
 ServerDialer.prototype.joinRoom = function(id) {
-    this.socket.emit('joinRoom', { gameID: id});
+    this.socket.emit('joinRoom', { gameID: id, character: localStorage.getItem('PH-character')});
     console.log('Asked to join room '+id);
 };
 

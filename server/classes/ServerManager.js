@@ -43,8 +43,8 @@ var ServerManager = {
         var scope = this;
         this.log('Connection attempt');
 
-        socket.on('hostRoom', function() {
-            scope.hostRoom(socket);
+        socket.on('hostRoom', function(data) {
+            scope.hostRoom(socket, data);
         });
 
         socket.on('joinRoom', function(data) {
@@ -69,15 +69,25 @@ var ServerManager = {
     },
 
     /**
-     * Method allowing to delete a room from the list *
+     * Method allowing to delete a room from the list and expulse participants of it *
      * @param gameID
      */
     deleteRoom: function(gameID) {
         for(var i=0; i<this.playableRooms.length; i++) { // We search for the room
             if(this.playableRooms[i]==gameID) { // Got the room !
+                
+                // WE STORE THE GAME PARTICIPANTS
+                var client = this.gameControllers[gameID].getClient();
+                var host = this.gameControllers[gameID].getHost();
+                
+                // WE CLOSE THE GAME CONTROLLER AND REMOVE THE ROOM FROM THE PLAYABLE ROOMS
                 this.playableRooms.splice(i,1); // We remove the room from the available rooms list
-                this.gameControllers[gameID].expulse(); // We expulse the clients and notify them
-                this.leaveRoom(this.gameControllers[gameID].getClient()); // We remove the clients links w/ the room
+                this.gameControllers[gameID].close(); // We stop the gameController and expulse it's members
+                
+                // WE MAKE EVERYONE LEAVE THE ROOM AND REMOVE THE GAME CONTROLLER
+                // This is done after game controller closing because they're notified of the expulsion via the server room
+                this.leaveRoom(client);
+                this.leaveRoom(host);
                 this.gameControllers[gameID] = null; // We remove the room controller definitely
                 this.log("Deleted room "+gameID); // We log the server
             }
@@ -85,16 +95,12 @@ var ServerManager = {
     },
 
     /**
-     * Method allowing the socket to leave it's current room *
+     * Method allowing the socket to leave it's current server room *
      * @param socket
      */
     leaveRoom: function(socket) {
-        if(socket && this.gameControllers[socket.gameID]) {
+        if(socket) {
             socket.leave(socket.gameID); // We cut off the link w/ the room
-            this.gameControllers[socket.gameID].removeClient(); // It's either the host, either the client that quits, in any case, the client is removed from the gameController
-            if (this.io.sockets.adapter.rooms[socket.gameID] == undefined || socket == this.gameControllers[socket.gameID].getHost()) {
-                this.deleteRoom(socket.gameID); // We remove the room
-            }
             this.log("Leaving room " + socket.gameID); // We log the server
             socket.gameID = null; // The socket no longer has a room ID
         }
@@ -114,7 +120,7 @@ var ServerManager = {
      * Set the given socket as a new host *
      * @param socket
      */
-    hostRoom: function(socket) {
+    hostRoom: function(socket, data) {
         this.log('Host attempt');
         
         // Generate a random gameID
@@ -122,7 +128,7 @@ var ServerManager = {
 
         // Checks if the room already exists
         if(this.io.sockets.adapter.rooms[socket.gameID]==undefined) {
-            console.log("Room created with ID "+socket.gameID);
+            this.log("Room created with ID "+socket.gameID+" - Character: "+data.character);
             this.playableRooms.push(socket.gameID);
 
             // Inform client of the room ID and Join this room
@@ -132,7 +138,7 @@ var ServerManager = {
             // New instance of game
             this.gameControllers[socket.gameID] = new GameController(this.io);
             this.gameControllers[socket.gameID].init(socket.gameID);
-            this.gameControllers[socket.gameID].setHost(socket);
+            this.gameControllers[socket.gameID].setHost(socket, data.character);
         } else { // If so, try another one
             this.log("Room "+socket.gameID+" already set, trying another one");
             this.hostRoom(socket);
@@ -153,8 +159,8 @@ var ServerManager = {
         // Check if the room exists
         if(socket.room!=undefined && this.gameControllers[socket.gameID]) {
             socket.join(socket.gameID);
-            if(this.gameControllers[socket.gameID].setClient(socket)) {
-                this.log('Join attempt on game '+data.gameID+' is a success');
+            if(this.gameControllers[socket.gameID].setClient(socket, data.character)) {
+                this.log('Join attempt on game '+data.gameID+' is a success - Character : '+data.character);
             } else {
                 socket.leave(socket.gameID);
                 this.log('Join attempt on game '+data.gameID+' is a fail - Client already set');
