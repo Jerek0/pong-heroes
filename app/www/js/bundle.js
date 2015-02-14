@@ -41,7 +41,7 @@ var app = {
 
 app.initialize();
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./game/RendererController":5,"./network/ServerDialer":8,"./pages/PageManager":15}],2:[function(require,module,exports){
+},{"./game/RendererController":5,"./network/ServerDialer":9,"./pages/PageManager":16}],2:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -84,19 +84,64 @@ CustomEventDispatcher.prototype.dispatchEvent= function(evt) {
 
 module.exports = CustomEventDispatcher;
 },{}],3:[function(require,module,exports){
+(function (global){
 /**
  * Created by jerek0 on 14/02/2015.
  */
 var StateController = require('./StateController');
+var Scene = require('./zones/Scene');
 
 var GameController = function () {
-    this.stage = new PIXI.Stage(0xFF0000);
+    this.stage = new PIXI.Stage(0x4A3637);
+    
+    this.scene = new Scene(1280,1024);
+    this.stage.addChild(this.scene);
+    this.onResize();
+    
+    window.onresize = this.onResize.bind(this);
+
+    var ball = new PIXI.Sprite.fromImage('img/ball.png');
+    ball.pivot.x = 0.5;
+    ball.pivot.y = 0.5;
+    ball.x = this.scene.baseWidth / 2;
+    ball.y = this.scene.baseHeight / 2;
+    this.scene.addChild(ball);
 };
 GameController.prototype = new StateController();
 GameController.prototype.constructor = GameController;
 
+GameController.prototype.onResize = function () {
+    var newWidth = window.innerWidth;
+    var newHeight = window.innerHeight;
+
+    global.gameEngine.rendererController.renderer.resize(newWidth, newHeight);
+    
+    var ratioW = newWidth / this.scene.baseWidth;
+    var ratioH = newHeight / this.scene.baseHeight;
+    var dec = {};
+    var ratio;
+
+    if ( ratioW < ratioH ) {
+        ratio = ratioW;
+        dec.x = 0;
+        dec.y = ( newHeight - this.scene.baseHeight * ratio ) / 2;
+    } 
+    else {
+        ratio = ratioH;
+        dec.x = ( newWidth - this.scene.baseWidth * ratio ) / 2;
+        dec.y = 0;
+    }
+    
+    console.log(ratio);
+
+    this.scene.scale = new PIXI.Point( ratio, ratio );
+    this.scene.x = dec.x;
+    this.scene.y = dec.y;
+};
+
 module.exports = GameController;
-},{"./StateController":6}],4:[function(require,module,exports){
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./StateController":6,"./zones/Scene":8}],4:[function(require,module,exports){
 /**
  * Created by jerek0 on 14/02/2015.
  */
@@ -128,6 +173,8 @@ IdleController.prototype = new StateController();
 IdleController.prototype.constructor = IdleController;
 
 IdleController.prototype.update = function() {
+    
+    // UPDATE ALL THE BALLS
     var i, numberOfBalls = this.balls.length;
     for(i = 0; i < numberOfBalls; i++) {
         this.balls[i].move();
@@ -145,7 +192,7 @@ var GameController = require('./GameController');
 var IdleController = require('./IdleController');
     
 var RendererController = function (wrapperId) {
-    this.renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight, { view: document.getElementById(wrapperId) });
+    this.renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight, { view: document.getElementById(wrapperId) }, false, true);
 
     this.setState('idle');
     
@@ -247,6 +294,27 @@ Ball.prototype.checkBoundariesCollisions = function (Rectangle) {
 module.exports = Ball;
 },{}],8:[function(require,module,exports){
 /**
+ * Created by jerek0 on 14/02/2015.
+ */
+
+var Scene = function(width, height) {
+    PIXI.DisplayObjectContainer.call( this );
+    
+    this.baseWidth = width;
+    this.baseHeight = height;
+
+    background = new PIXI.Graphics();
+    background.beginFill(0xF3BD0B);
+    background.drawRect(0, 0, this.baseWidth, this.baseHeight);
+    this.addChild(background);
+};
+
+Scene.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
+Scene.prototype.constructor = Scene;
+
+module.exports = Scene;
+},{}],9:[function(require,module,exports){
+/**
  * Created by jerek0 on 10/02/2015.
  */
     
@@ -324,6 +392,7 @@ ServerDialer.prototype.bindServerEvents = function() {
 ServerDialer.prototype.onNewGameID = function(data) {
     console.log('Received game id '+data.gameID);
     this.gameID = data.gameID;
+    localStorage.setItem('PH-role', 'host');
 };
 
 /**
@@ -339,6 +408,7 @@ ServerDialer.prototype.onNewBridge = function() {
  */
 ServerDialer.prototype.onConnected = function(data) {
     this.gameID = data.gameID;
+    localStorage.setItem('PH-role', 'client');
     console.log('Connection with room '+this.gameID+' established');
     this.dispatchEvent({ type: 'changePage', newPage: 'GamePage' });
 };
@@ -383,7 +453,7 @@ ServerDialer.prototype.leaveRoom = function() {
 };
 
 module.exports = ServerDialer;
-},{"../events/CustomEventDispatcher":2,"./serverConfig":9}],9:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2,"./serverConfig":10}],10:[function(require,module,exports){
 /**
  * Created by jerek0 on 10/02/2015.
  */
@@ -394,7 +464,7 @@ var serverConfig = {
 }
 
 module.exports = serverConfig;
-},{}],10:[function(require,module,exports){
+},{}],11:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -460,7 +530,7 @@ ChooseCharacter.prototype.chooseCharacter = function(e) {
 
 module.exports = ChooseCharacter;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":14}],11:[function(require,module,exports){
+},{"./Page":15}],12:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 13/02/2015.
@@ -534,7 +604,7 @@ GamePage.prototype.unbindUiActions = function() {
 module.exports = GamePage;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":14}],12:[function(require,module,exports){
+},{"./Page":15}],13:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -566,7 +636,7 @@ HomePage.prototype.onPageDisplayed = function() {
 };
 
 module.exports = HomePage;
-},{"./Page":14}],13:[function(require,module,exports){
+},{"./Page":15}],14:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 09/02/2015.
@@ -701,7 +771,7 @@ MatchmakingPage.prototype.hostRoom = function() {
 
 module.exports = MatchmakingPage;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":14}],14:[function(require,module,exports){
+},{"./Page":15}],15:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -751,7 +821,7 @@ Page.prototype.unbindUiActions = function() {
 };
 
 module.exports = Page;
-},{"../events/CustomEventDispatcher":2}],15:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],16:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -765,7 +835,7 @@ var GamePage = require('./GamePage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
-    this.changePage('HomePage');
+    this.changePage('MatchmakingPage');
 
     global.serverDialer.addEventListener('changePage', this.onChangePageHandler);
 };
@@ -828,7 +898,7 @@ PageManager.prototype.updateView = function(template) {
 
 module.exports = PageManager;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ChooseCharacterPage":10,"./GamePage":11,"./HomePage":12,"./MatchmakingPage":13,"./TechnoPage":16}],16:[function(require,module,exports){
+},{"./ChooseCharacterPage":11,"./GamePage":12,"./HomePage":13,"./MatchmakingPage":14,"./TechnoPage":17}],17:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -890,4 +960,4 @@ TechnoPage.prototype.chooseTechno = function() {
 };
 
 module.exports = TechnoPage;
-},{"./Page":14}]},{},[1]);
+},{"./Page":15}]},{},[1]);

@@ -76,6 +76,7 @@ ServerDialer.prototype.bindServerEvents = function() {
 ServerDialer.prototype.onNewGameID = function(data) {
     console.log('Received game id '+data.gameID);
     this.gameID = data.gameID;
+    localStorage.setItem('PH-role', 'host');
 };
 
 /**
@@ -91,6 +92,7 @@ ServerDialer.prototype.onNewBridge = function() {
  */
 ServerDialer.prototype.onConnected = function(data) {
     this.gameID = data.gameID;
+    localStorage.setItem('PH-role', 'client');
     console.log('Connection with room '+this.gameID+' established');
     this.dispatchEvent({ type: 'changePage', newPage: 'GamePage' });
 };
