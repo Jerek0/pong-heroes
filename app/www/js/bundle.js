@@ -41,7 +41,7 @@ var app = {
 
 app.initialize();
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./game/RendererController":5,"./network/ServerDialer":7,"./pages/PageManager":14}],2:[function(require,module,exports){
+},{"./game/RendererController":5,"./network/ServerDialer":8,"./pages/PageManager":15}],2:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -92,7 +92,7 @@ var StateController = require('./StateController');
 var GameController = function () {
     this.stage = new PIXI.Stage(0xFF0000);
 };
-GameController.prototype = StateController;
+GameController.prototype = new StateController();
 GameController.prototype.constructor = GameController;
 
 module.exports = GameController;
@@ -101,15 +101,43 @@ module.exports = GameController;
  * Created by jerek0 on 14/02/2015.
  */
 var StateController = require('./StateController');
+var Ball = require('./entities/Ball');
     
 var IdleController = function () {
-    this.stage = new PIXI.Stage(0xFFFF00);
+    this.stage = new PIXI.Stage(0xF3BD0B);
+    
+    this.boundaries = new PIXI.Rectangle(0,0,window.innerWidth, window.innerHeight);
+    
+    this.balls = [];
+    for(var i = 0; i < 4; i++){
+        this.balls[i] = new Ball();
+
+        this.balls[i].reset(new PIXI.Point(window.innerWidth / 2 , window.innerHeight / 2));
+        this.balls[i].launch();
+        this.balls[i].alpha = 0.5;
+
+        this.stage.addChild(this.balls[i]);
+    }
+    
+    var background = new PIXI.Sprite.fromImage('img/background.png');
+    background.width = window.innerWidth;
+    background.height = window.innerHeight;
+    this.stage.addChild(background);
 };
-IdleController.prototype = StateController;
+IdleController.prototype = new StateController();
 IdleController.prototype.constructor = IdleController;
 
+IdleController.prototype.update = function() {
+    var i, numberOfBalls = this.balls.length;
+    for(i = 0; i < numberOfBalls; i++) {
+        this.balls[i].move();
+        this.balls[i].checkBoundariesCollisions(this.boundaries);
+    }
+};
+
 module.exports = IdleController;
-},{"./StateController":6}],5:[function(require,module,exports){
+},{"./StateController":6,"./entities/Ball":7}],5:[function(require,module,exports){
+(function (global){
 /**
  * Created by jerek0 on 14/02/2015.
  */
@@ -120,7 +148,15 @@ var RendererController = function (wrapperId) {
     this.renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight, { view: document.getElementById(wrapperId) });
 
     this.setState('idle');
-    requestAnimationFrame(this.update.bind(this));
+    
+    var scope = this;
+    global.assetsLoader = new PIXI.AssetLoader([
+        "img/ball.png",
+        "img/background.png"
+    ]).on('onComplete', function() {
+        requestAnimationFrame(scope.update.bind(scope));
+    });
+    global.assetsLoader.load();
 };
 
 RendererController.prototype.setState = function(state) {
@@ -138,11 +174,14 @@ RendererController.prototype.setState = function(state) {
 };
 
 RendererController.prototype.update = function () {
+    this.state.update();
+    
     this.renderer.render(this.state.stage);
     requestAnimationFrame(this.update.bind(this));
 }
 
 module.exports = RendererController;
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
 },{"./GameController":3,"./IdleController":4}],6:[function(require,module,exports){
 /**
  * Created by jerek0 on 14/02/2015.
@@ -152,11 +191,61 @@ var StateController = function () {
 };
 
 StateController.prototype.update = function() {
-    console.log('updating');
+    //console.log('updating');
 };
 
 module.exports = StateController;
 },{}],7:[function(require,module,exports){
+/**
+ * Created by jerek0 on 14/02/2015.
+ */
+
+var Ball = function () {
+    PIXI.DisplayObjectContainer.call( this );
+    
+    this.position.deltaX = 0;
+    this.position.deltaY = 0;
+
+    this.graphics = new PIXI.Sprite.fromImage('./img/ball.png');
+    this.graphics.anchor.x = 0.5;
+    this.graphics.anchor.y = 0.5;
+    this.graphics.scale = new PIXI.Point(0.5, 0.5);
+    this.addChild(this.graphics);
+};
+
+Ball.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
+Ball.prototype.constructor = Ball;
+
+Ball.prototype.reset = function (point) {
+    this.position.deltaX = 0;
+    this.position.deltaY = 0;
+    
+    this.position.x = point.x;
+    this.position.y = point.y;
+};
+
+Ball.prototype.launch = function () {
+    this.position.deltaX = Math.floor((Math.random()*2-1)*10);
+    this.position.deltaY = Math.floor((Math.random()*2-1)*10);
+};
+
+Ball.prototype.move = function() {
+    this.position.x += this.position.deltaX;
+    this.position.y += this.position.deltaY;
+};
+
+Ball.prototype.accelerate = function() {
+    this.position.deltaX *= 1.0005;
+    this.position.deltaY *= 1.0005;
+};
+
+Ball.prototype.checkBoundariesCollisions = function (Rectangle) {
+    if(this.position.x > Rectangle.width || this.position.x < 0) this.position.deltaX = - this.position.deltaX;
+    if(this.position.y > Rectangle.height || this.position.y < 0 ) this.position.deltaY = - this.position.deltaY;
+};
+
+module.exports = Ball;
+},{}],8:[function(require,module,exports){
 /**
  * Created by jerek0 on 10/02/2015.
  */
@@ -294,18 +383,18 @@ ServerDialer.prototype.leaveRoom = function() {
 };
 
 module.exports = ServerDialer;
-},{"../events/CustomEventDispatcher":2,"./serverConfig":8}],8:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2,"./serverConfig":9}],9:[function(require,module,exports){
 /**
  * Created by jerek0 on 10/02/2015.
  */
 
 var serverConfig = {
-    url: "127.0.0.1",
+    url: "192.168.0.32",
     port: 9005
 }
 
 module.exports = serverConfig;
-},{}],9:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -333,7 +422,7 @@ ChooseCharacter.prototype.onPageDisplayed = function() {
     var scope = this;
     var btnBack = document.getElementById("btn-back");
     btnBack.addEventListener('click', function() {
-        scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+        scope.dispatchEvent({ type: 'changePage', newPage: 'TechnoPage' });
         global.serverDialer.leaveRoom();
     });
     
@@ -371,7 +460,7 @@ ChooseCharacter.prototype.chooseCharacter = function(e) {
 
 module.exports = ChooseCharacter;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":13}],10:[function(require,module,exports){
+},{"./Page":14}],11:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 13/02/2015.
@@ -445,7 +534,7 @@ GamePage.prototype.unbindUiActions = function() {
 module.exports = GamePage;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":13}],11:[function(require,module,exports){
+},{"./Page":14}],12:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -477,7 +566,7 @@ HomePage.prototype.onPageDisplayed = function() {
 };
 
 module.exports = HomePage;
-},{"./Page":13}],12:[function(require,module,exports){
+},{"./Page":14}],13:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 09/02/2015.
@@ -612,7 +701,7 @@ MatchmakingPage.prototype.hostRoom = function() {
 
 module.exports = MatchmakingPage;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":13}],13:[function(require,module,exports){
+},{"./Page":14}],14:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -662,7 +751,7 @@ Page.prototype.unbindUiActions = function() {
 };
 
 module.exports = Page;
-},{"../events/CustomEventDispatcher":2}],14:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],15:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -739,7 +828,7 @@ PageManager.prototype.updateView = function(template) {
 
 module.exports = PageManager;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ChooseCharacterPage":9,"./GamePage":10,"./HomePage":11,"./MatchmakingPage":12,"./TechnoPage":15}],15:[function(require,module,exports){
+},{"./ChooseCharacterPage":10,"./GamePage":11,"./HomePage":12,"./MatchmakingPage":13,"./TechnoPage":16}],16:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -801,4 +890,4 @@ TechnoPage.prototype.chooseTechno = function() {
 };
 
 module.exports = TechnoPage;
-},{"./Page":13}]},{},[1]);
+},{"./Page":14}]},{},[1]);

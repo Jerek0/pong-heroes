@@ -82,6 +82,11 @@ body.desktop .mobile {
     color: #FFFFFF;
 }
 
+#logo {
+    max-height: 50vh;
+    margin-bottom: 1em;
+}
+
 /* UTIL */
 
 .col50 {

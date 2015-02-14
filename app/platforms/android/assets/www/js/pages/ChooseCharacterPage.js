@@ -7,6 +7,7 @@ var Page = require('./Page');
 var ChooseCharacter = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
+    this.chooseCharacterHandler = this.chooseCharacter.bind(this);
 
     this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
     this.setTemplateUrl('templates/choose_character.html');
@@ -19,7 +20,6 @@ ChooseCharacter.prototype.constructor = ChooseCharacter;
 ChooseCharacter.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
 
-    // TODO Show btn only when connected to server
     // TODO Watch Memory Here
     var scope = this;
     var btnBack = document.getElementById("btn-back");
@@ -27,6 +27,37 @@ ChooseCharacter.prototype.onPageDisplayed = function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
         global.serverDialer.leaveRoom();
     });
+    
+    this.bindUiActions();
+};
+
+ChooseCharacter.prototype.bindUiActions = function() {
+    this.registerCharacterChoosing();  
+};
+
+ChooseCharacter.prototype.unbindUiActions = function() {
+    this.destroyCharacterChoosing();
+};
+
+ChooseCharacter.prototype.registerCharacterChoosing = function() {
+    this.characters = document.querySelectorAll('#characters-list .character');
+
+    var i;
+    for(i = 0; i < this.characters.length; i++) {
+        this.characters[i].addEventListener('click', this.chooseCharacterHandler);
+    }
+};
+
+ChooseCharacter.prototype.destroyCharacterChoosing = function() {
+    var i;
+    for(i = 0; i < this.characters.length; i++) {
+        this.characters[i].removeEventListener('click', this.chooseCharacterHandler);
+    }
+};
+
+ChooseCharacter.prototype.chooseCharacter = function(e) {
+    localStorage.setItem('PH-character', e.currentTarget.dataset.character);
+    this.dispatchEvent({ type: "changePage", newPage: "MatchmakingPage" });
 };
 
 module.exports = ChooseCharacter;

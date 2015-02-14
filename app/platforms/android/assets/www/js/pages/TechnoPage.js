@@ -55,7 +55,7 @@ TechnoPage.prototype.destroyTechnoChoosing = function() {
 TechnoPage.prototype.chooseTechno = function() {
     localStorage.setItem('PH-tech', event.target.dataset.tech);
     this.destroyTechnoChoosing();
-    this.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
 };
 
 module.exports = TechnoPage;

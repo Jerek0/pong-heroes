@@ -11,7 +11,6 @@ var MatchmakingPage = function() {
     this.joinRoomHandler = this.joinRoom.bind(this);
     this.newHostHandler = this.hostRoom.bind(this);
     this.askForRoomsHandler = this.askForRooms.bind(this);
-    this.onNewBridgeHandler = this.onNewBridge.bind(this);
 
     this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
     this.setTemplateUrl('templates/matchmaking.html');
@@ -71,13 +70,14 @@ MatchmakingPage.prototype.populateRooms = function(e) {
             document.getElementById('rooms-list').innerHTML += '<li data-roomId="'+ e.data[i] +'">Room '+ e.data[i] +'</li>';
         }
         
-        // We listen now for a Room choosing
-        this.registerRoomChoosing();
     } 
     // We see no room ... :'(
     else {
         document.getElementById('rooms-list').innerHTML = '<li>No room available for now ...</li>';
     }
+
+    // We listen now for a Room choosing
+    this.registerRoomChoosing();
 };
 
 /**
@@ -102,6 +102,11 @@ MatchmakingPage.prototype.destroyRoomChoosing = function() {
     }
 };
 
+/* ########################################### *
+ * ############# SERVER REQUESTS ############# *
+ * ########################################### *
+ */
+
 MatchmakingPage.prototype.askForRooms = function() {
     // GET THE ROOMS
     global.serverDialer.askForRooms();
@@ -109,27 +114,19 @@ MatchmakingPage.prototype.askForRooms = function() {
 };
 
 /**
- * On click to a room, we join it *
+ * On click to a room, we try to join it *
  * @param e
  */
 MatchmakingPage.prototype.joinRoom = function(e) {
     global.serverDialer.joinRoom(e.currentTarget.dataset.roomid);
-    global.serverDialer.addEventListener('newBridge', this.onNewBridgeHandler);
 };
-
-MatchmakingPage.prototype.onNewBridge = function () {
-    global.serverDialer.removeEventListener('newBridge', this.onNewBridgeHandler);
-    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
-    this.unbindUiActions();
-}
 
 /**
  * On click on the new host button, we notify the server *
  */
 MatchmakingPage.prototype.hostRoom = function() {
     global.serverDialer.hostRoom();
-    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
-    this.unbindUiActions();
+    this.dispatchEvent({ type: 'changePage', newPage: 'GamePage' });
 };
 
 module.exports = MatchmakingPage;

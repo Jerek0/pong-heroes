@@ -2,6 +2,7 @@
 (function (global){
 var PageManager = require('./pages/PageManager');
 var ServerDialer = require('./network/ServerDialer');
+var RendererController = require('./game/RendererController');
 
 var app = {
     initialize: function() {
@@ -22,18 +23,25 @@ var app = {
 
         app.connectToServer();
         app.pageManager = new PageManager(document.getElementById('ui'));
+        app.launchGameEngine();
     },
     
     connectToServer: function() {
         if(!global.serverDialer) {
             global.serverDialer = new ServerDialer();
         }
+    },
+    
+    launchGameEngine: function() {
+        global.gameEngine = {
+            rendererController: new RendererController('game')
+        };
     }
 };
 
 app.initialize();
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./network/ServerDialer":3,"./pages/PageManager":9}],2:[function(require,module,exports){
+},{"./game/RendererController":5,"./network/ServerDialer":8,"./pages/PageManager":15}],2:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -77,6 +85,140 @@ CustomEventDispatcher.prototype.dispatchEvent= function(evt) {
 module.exports = CustomEventDispatcher;
 },{}],3:[function(require,module,exports){
 /**
+ * Created by jerek0 on 14/02/2015.
+ */
+var StateController = require('./StateController');
+
+var GameController = function () {
+    this.stage = new PIXI.Stage(0xFF0000);
+};
+GameController.prototype = new StateController();
+GameController.prototype.constructor = GameController;
+
+module.exports = GameController;
+},{"./StateController":6}],4:[function(require,module,exports){
+/**
+ * Created by jerek0 on 14/02/2015.
+ */
+var StateController = require('./StateController');
+var Ball = require('./entities/Ball');
+    
+var IdleController = function () {
+    this.stage = new PIXI.Stage(0xF3BD0B);
+    
+    this.balls = [];
+    for(var i = 0; i < 4; i++){
+        this.balls[i] = new Ball();
+
+        this.balls[i].position.x = window.innerWidth/2;
+        this.balls[i].position.y = window.innerHeight/2;
+        this.balls[i].position.deltaX = Math.floor((Math.random()*2-1)*10);
+        this.balls[i].position.deltaY = Math.floor((Math.random()*2-1)*10);
+        this.balls[i].alpha = 0.5;
+
+        this.stage.addChild(this.balls[i]);
+    }
+    
+    var background = new PIXI.Sprite.fromImage('img/background.png');
+    background.width = window.innerWidth;
+    background.height = window.innerHeight;
+    this.stage.addChild(background);
+};
+IdleController.prototype = new StateController();
+IdleController.prototype.constructor = IdleController;
+
+IdleController.prototype.update = function() {
+    var i, numberOfBalls = this.balls.length;
+    for(i = 0; i < numberOfBalls; i++) {
+        this.balls[i].position.x += this.balls[i].position.deltaX;
+        this.balls[i].position.y += this.balls[i].position.deltaY;
+
+        if(this.balls[i].position.x > window.innerWidth || this.balls[i].position.x < 0) this.balls[i].position.deltaX = - this.balls[i].position.deltaX;
+        if(this.balls[i].position.y > window.innerHeight || this.balls[i].position.y < 0 ) this.balls[i].position.deltaY = - this.balls[i].position.deltaY;
+    }
+};
+
+module.exports = IdleController;
+},{"./StateController":6,"./entities/Ball":7}],5:[function(require,module,exports){
+(function (global){
+/**
+ * Created by jerek0 on 14/02/2015.
+ */
+var GameController = require('./GameController');
+var IdleController = require('./IdleController');
+    
+var RendererController = function (wrapperId) {
+    this.renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight, { view: document.getElementById(wrapperId) });
+
+    this.setState('idle');
+    
+    var scope = this;
+    global.assetsLoader = new PIXI.AssetLoader([
+        "img/ball.png",
+        "img/background.png"
+    ]).on('onComplete', function() {
+        requestAnimationFrame(scope.update.bind(scope));
+    });
+    global.assetsLoader.load();
+};
+
+RendererController.prototype.setState = function(state) {
+    switch (state) {
+        case 'game':
+            this.state = new GameController();
+            break;
+        
+        case 'idle':
+        default:
+            this.state = new IdleController();
+            break;
+    }
+    
+};
+
+RendererController.prototype.update = function () {
+    this.state.update();
+    
+    this.renderer.render(this.state.stage);
+    requestAnimationFrame(this.update.bind(this));
+}
+
+module.exports = RendererController;
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./GameController":3,"./IdleController":4}],6:[function(require,module,exports){
+/**
+ * Created by jerek0 on 14/02/2015.
+ */
+var StateController = function () {
+    this.stage = new PIXI.Stage(0x333333);
+};
+
+StateController.prototype.update = function() {
+    //console.log('updating');
+};
+
+module.exports = StateController;
+},{}],7:[function(require,module,exports){
+/**
+ * Created by jerek0 on 14/02/2015.
+ */
+
+var Ball = function () {
+    PIXI.DisplayObjectContainer.call( this );
+
+    this.graphics = new PIXI.Sprite.fromImage('./img/ball.png');
+    this.graphics.anchor.x = 0.5;
+    this.graphics.anchor.y = 0.5;
+    this.graphics.scale = new PIXI.Point(0.5, 0.5);
+    this.addChild(this.graphics);
+};
+
+Ball.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
+Ball.prototype.constructor = Ball;
+
+module.exports = Ball;
+},{}],8:[function(require,module,exports){
+/**
  * Created by jerek0 on 10/02/2015.
  */
     
@@ -95,6 +237,7 @@ ServerDialer.prototype.constructor = ServerDialer;
  */
 ServerDialer.prototype.init =  function() {
     this.socket = io.connect('http://'+serverConfig.url+':'+serverConfig.port);
+    this.gameID = null;
     
     var scope = this;
     this.socket
@@ -127,16 +270,22 @@ ServerDialer.prototype.bindServerEvents = function() {
     this.socket.on('newGameID', function(data) {
         scope.onNewGameID(data);
     });
-    this.socket.on('newBridge', function(data) {
-        scope.onNewBridge(data);
+    this.socket.on('newBridge', function() {
+        scope.onNewBridge();
+    });
+    this.socket.on('connected', function(data) {
+        scope.onConnected(data);
     });
     this.socket.on('rooms', function(data) {
         scope.dispatchEvent({ type: 'receivedRooms', data: data.rooms});
     });
     this.socket.on('expulsed', function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
-        alert('We lost the host !');
+        alert('A player has quit ! Leaving the room');
         this.gameID=null;
+    });
+    this.socket.on('launchGame', function() {
+        scope.dispatchEvent({ type: 'launchGame' });
     });
 };
 
@@ -152,11 +301,18 @@ ServerDialer.prototype.onNewGameID = function(data) {
 /**
  * Method called when we've got a connection between a host and a client *
  */
-ServerDialer.prototype.onNewBridge = function(data) {
+ServerDialer.prototype.onNewBridge = function() {
+    console.log('BRIDGE !');
+    this.dispatchEvent({ type: 'bridge' });
+};
+
+/**
+ * Method called when we've got a connection between a host and a client *
+ */
+ServerDialer.prototype.onConnected = function(data) {
     this.gameID = data.gameID;
     console.log('Connection with room '+this.gameID+' established');
-    
-    this.dispatchEvent({ type: 'newBridge' });
+    this.dispatchEvent({ type: 'changePage', newPage: 'GamePage' });
 };
 
 /* ########################################### *
@@ -178,7 +334,7 @@ ServerDialer.prototype.askForRooms = function() {
  * Send the server a room hosting request *
  */
 ServerDialer.prototype.hostRoom = function() {
-    this.socket.emit('hostRoom');
+    this.socket.emit('hostRoom', { character: localStorage.getItem('PH-character')});
 };
 
 /**
@@ -186,7 +342,7 @@ ServerDialer.prototype.hostRoom = function() {
  * @param id - The existing room id
  */
 ServerDialer.prototype.joinRoom = function(id) {
-    this.socket.emit('joinRoom', { gameID: id});
+    this.socket.emit('joinRoom', { gameID: id, character: localStorage.getItem('PH-character')});
     console.log('Asked to join room '+id);
 };
 
@@ -196,10 +352,10 @@ ServerDialer.prototype.joinRoom = function(id) {
 ServerDialer.prototype.leaveRoom = function() {
     this.socket.emit('leaveRoom');
     this.gameID = null;
-}
+};
 
 module.exports = ServerDialer;
-},{"../events/CustomEventDispatcher":2,"./serverConfig":4}],4:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2,"./serverConfig":9}],9:[function(require,module,exports){
 /**
  * Created by jerek0 on 10/02/2015.
  */
@@ -210,7 +366,7 @@ var serverConfig = {
 }
 
 module.exports = serverConfig;
-},{}],5:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -221,6 +377,7 @@ var Page = require('./Page');
 var ChooseCharacter = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
+    this.chooseCharacterHandler = this.chooseCharacter.bind(this);
 
     this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
     this.setTemplateUrl('templates/choose_character.html');
@@ -233,7 +390,6 @@ ChooseCharacter.prototype.constructor = ChooseCharacter;
 ChooseCharacter.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
 
-    // TODO Show btn only when connected to server
     // TODO Watch Memory Here
     var scope = this;
     var btnBack = document.getElementById("btn-back");
@@ -241,11 +397,116 @@ ChooseCharacter.prototype.onPageDisplayed = function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
         global.serverDialer.leaveRoom();
     });
+    
+    this.bindUiActions();
+};
+
+ChooseCharacter.prototype.bindUiActions = function() {
+    this.registerCharacterChoosing();  
+};
+
+ChooseCharacter.prototype.unbindUiActions = function() {
+    this.destroyCharacterChoosing();
+};
+
+ChooseCharacter.prototype.registerCharacterChoosing = function() {
+    this.characters = document.querySelectorAll('#characters-list .character');
+
+    var i;
+    for(i = 0; i < this.characters.length; i++) {
+        this.characters[i].addEventListener('click', this.chooseCharacterHandler);
+    }
+};
+
+ChooseCharacter.prototype.destroyCharacterChoosing = function() {
+    var i;
+    for(i = 0; i < this.characters.length; i++) {
+        this.characters[i].removeEventListener('click', this.chooseCharacterHandler);
+    }
+};
+
+ChooseCharacter.prototype.chooseCharacter = function(e) {
+    localStorage.setItem('PH-character', e.currentTarget.dataset.character);
+    this.dispatchEvent({ type: "changePage", newPage: "MatchmakingPage" });
 };
 
 module.exports = ChooseCharacter;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":8}],6:[function(require,module,exports){
+},{"./Page":14}],11:[function(require,module,exports){
+(function (global){
+/**
+ * Created by jerek0 on 13/02/2015.
+ */
+
+var Page = require('./Page');
+
+var GamePage = function() {
+    // Functions handlers
+    this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
+    this.onOtherPlayerReadyHandler = this.onOtherPlayerReady.bind(this);
+    this.launchGameHandler = this.launchGame.bind(this);
+
+    this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
+    this.setTemplateUrl('templates/game.html');
+};
+
+// Héritage de Page
+GamePage.prototype = new Page();
+GamePage.prototype.constructor = GamePage;
+
+/**
+ * Called when page markup is loaded *
+ */
+GamePage.prototype.onPageDisplayed = function() {
+    this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
+
+    // TODO Watch Memory Here
+    var btnBack = document.getElementById("btn-back");
+    btnBack.addEventListener('click', function() {
+        global.serverDialer.leaveRoom();
+    });
+    
+    this.bindServerEvents();
+};
+
+/**
+ * Listen for events coming from the server *
+ */
+GamePage.prototype.bindServerEvents = function () {
+    global.serverDialer.addEventListener('bridge', this.onOtherPlayerReadyHandler);
+    global.serverDialer.addEventListener('launchGame', this.launchGameHandler);
+}
+
+/**
+ * When the players are ready, we notify and wait for the game launch * 
+ */
+GamePage.prototype.onOtherPlayerReady = function() {
+    global.serverDialer.removeEventListener('bridge', this.onOtherPlayerReadyHandler);
+    document.getElementById("message").innerHTML = "Synced !";
+};
+
+/**
+ * Here the fun begins ! Game launch *
+ */
+GamePage.prototype.launchGame = function () {
+    global.serverDialer.removeEventListener('launchGame', this.launchGameHandler);
+    document.getElementById("message").innerHTML = "GO !";
+    
+    global.gameEngine.rendererController.setState('game');
+};
+
+/**
+ * Override, called when page changes *
+ */
+GamePage.prototype.unbindUiActions = function() {
+    global.serverDialer.removeEventListener('bridge', this.onOtherPlayerReadyHandler);
+    global.serverDialer.removeEventListener('launchGame', this.launchGameHandler);
+};
+
+module.exports = GamePage;
+
+}).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
+},{"./Page":14}],12:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -277,7 +538,7 @@ HomePage.prototype.onPageDisplayed = function() {
 };
 
 module.exports = HomePage;
-},{"./Page":8}],7:[function(require,module,exports){
+},{"./Page":14}],13:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 09/02/2015.
@@ -292,7 +553,6 @@ var MatchmakingPage = function() {
     this.joinRoomHandler = this.joinRoom.bind(this);
     this.newHostHandler = this.hostRoom.bind(this);
     this.askForRoomsHandler = this.askForRooms.bind(this);
-    this.onNewBridgeHandler = this.onNewBridge.bind(this);
 
     this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
     this.setTemplateUrl('templates/matchmaking.html');
@@ -352,13 +612,14 @@ MatchmakingPage.prototype.populateRooms = function(e) {
             document.getElementById('rooms-list').innerHTML += '<li data-roomId="'+ e.data[i] +'">Room '+ e.data[i] +'</li>';
         }
         
-        // We listen now for a Room choosing
-        this.registerRoomChoosing();
     } 
     // We see no room ... :'(
     else {
         document.getElementById('rooms-list').innerHTML = '<li>No room available for now ...</li>';
     }
+
+    // We listen now for a Room choosing
+    this.registerRoomChoosing();
 };
 
 /**
@@ -383,6 +644,11 @@ MatchmakingPage.prototype.destroyRoomChoosing = function() {
     }
 };
 
+/* ########################################### *
+ * ############# SERVER REQUESTS ############# *
+ * ########################################### *
+ */
+
 MatchmakingPage.prototype.askForRooms = function() {
     // GET THE ROOMS
     global.serverDialer.askForRooms();
@@ -390,32 +656,24 @@ MatchmakingPage.prototype.askForRooms = function() {
 };
 
 /**
- * On click to a room, we join it *
+ * On click to a room, we try to join it *
  * @param e
  */
 MatchmakingPage.prototype.joinRoom = function(e) {
     global.serverDialer.joinRoom(e.currentTarget.dataset.roomid);
-    global.serverDialer.addEventListener('newBridge', this.onNewBridgeHandler);
 };
-
-MatchmakingPage.prototype.onNewBridge = function () {
-    global.serverDialer.removeEventListener('newBridge', this.onNewBridgeHandler);
-    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
-    this.unbindUiActions();
-}
 
 /**
  * On click on the new host button, we notify the server *
  */
 MatchmakingPage.prototype.hostRoom = function() {
     global.serverDialer.hostRoom();
-    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
-    this.unbindUiActions();
+    this.dispatchEvent({ type: 'changePage', newPage: 'GamePage' });
 };
 
 module.exports = MatchmakingPage;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":8}],8:[function(require,module,exports){
+},{"./Page":14}],14:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -458,10 +716,14 @@ Page.prototype.loadTemplate = function() {
             }
         }
     }
-}
+};
+
+Page.prototype.unbindUiActions = function() {
+    // Function to override !
+};
 
 module.exports = Page;
-},{"../events/CustomEventDispatcher":2}],9:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],15:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -471,6 +733,7 @@ var HomePage = require('./HomePage');
 var TechnoPage = require('./TechnoPage');
 var MatchmakingPage = require('./MatchmakingPage');
 var ChooseCharacterPage = require('./ChooseCharacterPage');
+var GamePage = require('./GamePage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
@@ -485,6 +748,9 @@ PageManager.prototype.changePage = function(newPage) {
     // Function handlers
     this.onTemplateLoadedHandler = this.onTemplateLoaded.bind(this);
     this.onChangePageHandler = this.onChangePage.bind(this);
+    
+    if(this.currentPage) this.currentPage.unbindUiActions();
+    if(this.currentPage instanceof GamePage) global.gameEngine.rendererController.setState('idle');
 
     switch (newPage) {
         case "HomePage":
@@ -498,6 +764,9 @@ PageManager.prototype.changePage = function(newPage) {
             break;
         case "ChooseCharacterPage":
             this.currentPage = new ChooseCharacterPage();
+            break;
+        case "GamePage":
+            this.currentPage = new GamePage();
             break;
         default:
             this.currentPage = new HomePage();
@@ -531,7 +800,7 @@ PageManager.prototype.updateView = function(template) {
 
 module.exports = PageManager;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ChooseCharacterPage":5,"./HomePage":6,"./MatchmakingPage":7,"./TechnoPage":10}],10:[function(require,module,exports){
+},{"./ChooseCharacterPage":10,"./GamePage":11,"./HomePage":12,"./MatchmakingPage":13,"./TechnoPage":16}],16:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -589,8 +858,8 @@ TechnoPage.prototype.destroyTechnoChoosing = function() {
 TechnoPage.prototype.chooseTechno = function() {
     localStorage.setItem('PH-tech', event.target.dataset.tech);
     this.destroyTechnoChoosing();
-    this.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+    this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
 };
 
 module.exports = TechnoPage;
-},{"./Page":8}]},{},[1]);
+},{"./Page":14}]},{},[1]);

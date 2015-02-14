@@ -40,6 +40,10 @@ Page.prototype.loadTemplate = function() {
             }
         }
     }
-}
+};
+
+Page.prototype.unbindUiActions = function() {
+    // Function to override !
+};
 
 module.exports = Page;

@@ -17,6 +17,7 @@ ServerDialer.prototype.constructor = ServerDialer;
  */
 ServerDialer.prototype.init =  function() {
     this.socket = io.connect('http://'+serverConfig.url+':'+serverConfig.port);
+    this.gameID = null;
     
     var scope = this;
     this.socket
@@ -49,16 +50,22 @@ ServerDialer.prototype.bindServerEvents = function() {
     this.socket.on('newGameID', function(data) {
         scope.onNewGameID(data);
     });
-    this.socket.on('newBridge', function(data) {
-        scope.onNewBridge(data);
+    this.socket.on('newBridge', function() {
+        scope.onNewBridge();
+    });
+    this.socket.on('connected', function(data) {
+        scope.onConnected(data);
     });
     this.socket.on('rooms', function(data) {
         scope.dispatchEvent({ type: 'receivedRooms', data: data.rooms});
     });
     this.socket.on('expulsed', function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
-        alert('We lost the host !');
+        alert('A player has quit ! Leaving the room');
         this.gameID=null;
+    });
+    this.socket.on('launchGame', function() {
+        scope.dispatchEvent({ type: 'launchGame' });
     });
 };
 
@@ -74,11 +81,18 @@ ServerDialer.prototype.onNewGameID = function(data) {
 /**
  * Method called when we've got a connection between a host and a client *
  */
-ServerDialer.prototype.onNewBridge = function(data) {
+ServerDialer.prototype.onNewBridge = function() {
+    console.log('BRIDGE !');
+    this.dispatchEvent({ type: 'bridge' });
+};
+
+/**
+ * Method called when we've got a connection between a host and a client *
+ */
+ServerDialer.prototype.onConnected = function(data) {
     this.gameID = data.gameID;
     console.log('Connection with room '+this.gameID+' established');
-    
-    this.dispatchEvent({ type: 'newBridge' });
+    this.dispatchEvent({ type: 'changePage', newPage: 'GamePage' });
 };
 
 /* ########################################### *
@@ -100,7 +114,7 @@ ServerDialer.prototype.askForRooms = function() {
  * Send the server a room hosting request *
  */
 ServerDialer.prototype.hostRoom = function() {
-    this.socket.emit('hostRoom');
+    this.socket.emit('hostRoom', { character: localStorage.getItem('PH-character')});
 };
 
 /**
@@ -108,7 +122,7 @@ ServerDialer.prototype.hostRoom = function() {
  * @param id - The existing room id
  */
 ServerDialer.prototype.joinRoom = function(id) {
-    this.socket.emit('joinRoom', { gameID: id});
+    this.socket.emit('joinRoom', { gameID: id, character: localStorage.getItem('PH-character')});
     console.log('Asked to join room '+id);
 };
 
@@ -118,6 +132,6 @@ ServerDialer.prototype.joinRoom = function(id) {
 ServerDialer.prototype.leaveRoom = function() {
     this.socket.emit('leaveRoom');
     this.gameID = null;
-}
+};
 
 module.exports = ServerDialer;
