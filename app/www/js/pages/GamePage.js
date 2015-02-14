@@ -18,42 +18,52 @@ var GamePage = function() {
 GamePage.prototype = new Page();
 GamePage.prototype.constructor = GamePage;
 
+/**
+ * Called when page markup is loaded *
+ */
 GamePage.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
 
     // TODO Watch Memory Here
-    var scope = this;
     var btnBack = document.getElementById("btn-back");
     btnBack.addEventListener('click', function() {
-        //scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
         global.serverDialer.leaveRoom();
     });
-
-    this.registerSync();
-};
-
-GamePage.prototype.registerSync = function() {
-    if(!global.serverDialer.otherPlayerReady) {
-        global.serverDialer.addEventListener('otherPlayerReady', this.onOtherPlayerReadyHandler);
-    } else {
-        this.onOtherPlayerReady();
-    }
-};
-
-GamePage.prototype.onOtherPlayerReady = function() {
-    global.serverDialer.removeEventListener('otherPlayerReady', this.onOtherPlayerReadyHandler);
     
-    document.getElementById("message").innerHTML = "Synced !";
-    global.serverDialer.addEventListener('launchGame', this.launchGameHandler);
+    this.bindServerEvents();
 };
 
+/**
+ * Listen for events coming from the server *
+ */
+GamePage.prototype.bindServerEvents = function () {
+    global.serverDialer.addEventListener('bridge', this.onOtherPlayerReadyHandler);
+    global.serverDialer.addEventListener('launchGame', this.launchGameHandler);
+}
+
+/**
+ * When the players are ready, we notify and wait for the game launch * 
+ */
+GamePage.prototype.onOtherPlayerReady = function() {
+    global.serverDialer.removeEventListener('bridge', this.onOtherPlayerReadyHandler);
+    document.getElementById("message").innerHTML = "Synced !";
+};
+
+/**
+ * Here the fun begins ! Game launch *
+ */
 GamePage.prototype.launchGame = function () {
     global.serverDialer.removeEventListener('launchGame', this.launchGameHandler);
     document.getElementById("message").innerHTML = "GO !";
+    
+    global.gameEngine.rendererController.setState('game');
 };
 
+/**
+ * Override, called when page changes *
+ */
 GamePage.prototype.unbindUiActions = function() {
-    global.serverDialer.removeEventListener('otherPlayerReady', this.onOtherPlayerReadyHandler);
+    global.serverDialer.removeEventListener('bridge', this.onOtherPlayerReadyHandler);
     global.serverDialer.removeEventListener('launchGame', this.launchGameHandler);
 };
 

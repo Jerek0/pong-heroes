@@ -34,15 +34,25 @@ GameController.prototype.setClient = function(socket, character) {
             character: character
         };
 
+        this.client.socket.emit('connected', { gameID: this.gameID });
+
         // Inform everyone in the room that there is a new connection between them
         this.io.sockets.in(this.gameID).emit('newBridge');
-
-        this.client.socket.emit('connected', { gameID: this.gameID });
+        
+        this.launchGame();
 
         return true;
     } else {
         return false;
     }
+};
+
+GameController.prototype.launchGame = function () {
+    var scope = this;
+    
+    setTimeout(function() {
+        scope.io.sockets.in(scope.gameID).emit('launchGame');
+    }, 1000);
 };
 
 GameController.prototype.expulse = function() {

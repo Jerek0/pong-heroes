@@ -23,6 +23,7 @@ PageManager.prototype.changePage = function(newPage) {
     this.onChangePageHandler = this.onChangePage.bind(this);
     
     if(this.currentPage) this.currentPage.unbindUiActions();
+    if(this.currentPage instanceof GamePage) global.gameEngine.rendererController.setState('idle');
 
     switch (newPage) {
         case "HomePage":

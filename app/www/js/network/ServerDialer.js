@@ -17,6 +17,7 @@ ServerDialer.prototype.constructor = ServerDialer;
  */
 ServerDialer.prototype.init =  function() {
     this.socket = io.connect('http://'+serverConfig.url+':'+serverConfig.port);
+    this.gameID = null;
     
     var scope = this;
     this.socket
@@ -63,10 +64,6 @@ ServerDialer.prototype.bindServerEvents = function() {
         alert('A player has quit ! Leaving the room');
         this.gameID=null;
     });
-    this.socket.on('otherPlayerReady', function() {
-        scope.otherPlayerReady = true;
-        scope.dispatchEvent({ type: 'otherPlayerReady' });
-    });
     this.socket.on('launchGame', function() {
         scope.dispatchEvent({ type: 'launchGame' });
     });
@@ -86,6 +83,7 @@ ServerDialer.prototype.onNewGameID = function(data) {
  */
 ServerDialer.prototype.onNewBridge = function() {
     console.log('BRIDGE !');
+    this.dispatchEvent({ type: 'bridge' });
 };
 
 /**

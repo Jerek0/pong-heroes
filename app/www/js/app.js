@@ -1,5 +1,6 @@
 var PageManager = require('./pages/PageManager');
 var ServerDialer = require('./network/ServerDialer');
+var RendererController = require('./game/RendererController');
 
 var app = {
     initialize: function() {
@@ -20,12 +21,19 @@ var app = {
 
         app.connectToServer();
         app.pageManager = new PageManager(document.getElementById('ui'));
+        app.launchGameEngine();
     },
     
     connectToServer: function() {
         if(!global.serverDialer) {
             global.serverDialer = new ServerDialer();
         }
+    },
+    
+    launchGameEngine: function() {
+        global.gameEngine = {
+            rendererController: new RendererController('game')
+        };
     }
 };
 

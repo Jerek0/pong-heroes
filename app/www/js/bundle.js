@@ -2,6 +2,7 @@
 (function (global){
 var PageManager = require('./pages/PageManager');
 var ServerDialer = require('./network/ServerDialer');
+var RendererController = require('./game/RendererController');
 
 var app = {
     initialize: function() {
@@ -22,18 +23,25 @@ var app = {
 
         app.connectToServer();
         app.pageManager = new PageManager(document.getElementById('ui'));
+        app.launchGameEngine();
     },
     
     connectToServer: function() {
         if(!global.serverDialer) {
             global.serverDialer = new ServerDialer();
         }
+    },
+    
+    launchGameEngine: function() {
+        global.gameEngine = {
+            rendererController: new RendererController('game')
+        };
     }
 };
 
 app.initialize();
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./network/ServerDialer":3,"./pages/PageManager":10}],2:[function(require,module,exports){
+},{"./game/RendererController":5,"./network/ServerDialer":7,"./pages/PageManager":14}],2:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -77,6 +85,79 @@ CustomEventDispatcher.prototype.dispatchEvent= function(evt) {
 module.exports = CustomEventDispatcher;
 },{}],3:[function(require,module,exports){
 /**
+ * Created by jerek0 on 14/02/2015.
+ */
+var StateController = require('./StateController');
+
+var GameController = function () {
+    this.stage = new PIXI.Stage(0xFF0000);
+};
+GameController.prototype = StateController;
+GameController.prototype.constructor = GameController;
+
+module.exports = GameController;
+},{"./StateController":6}],4:[function(require,module,exports){
+/**
+ * Created by jerek0 on 14/02/2015.
+ */
+var StateController = require('./StateController');
+    
+var IdleController = function () {
+    this.stage = new PIXI.Stage(0xFFFF00);
+};
+IdleController.prototype = StateController;
+IdleController.prototype.constructor = IdleController;
+
+module.exports = IdleController;
+},{"./StateController":6}],5:[function(require,module,exports){
+/**
+ * Created by jerek0 on 14/02/2015.
+ */
+var GameController = require('./GameController');
+var IdleController = require('./IdleController');
+    
+var RendererController = function (wrapperId) {
+    this.renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight, { view: document.getElementById(wrapperId) });
+
+    this.setState('idle');
+    requestAnimationFrame(this.update.bind(this));
+};
+
+RendererController.prototype.setState = function(state) {
+    switch (state) {
+        case 'game':
+            this.state = new GameController();
+            break;
+        
+        case 'idle':
+        default:
+            this.state = new IdleController();
+            break;
+    }
+    
+};
+
+RendererController.prototype.update = function () {
+    this.renderer.render(this.state.stage);
+    requestAnimationFrame(this.update.bind(this));
+}
+
+module.exports = RendererController;
+},{"./GameController":3,"./IdleController":4}],6:[function(require,module,exports){
+/**
+ * Created by jerek0 on 14/02/2015.
+ */
+var StateController = function () {
+    this.stage = new PIXI.Stage(0x333333);
+};
+
+StateController.prototype.update = function() {
+    console.log('updating');
+};
+
+module.exports = StateController;
+},{}],7:[function(require,module,exports){
+/**
  * Created by jerek0 on 10/02/2015.
  */
     
@@ -95,6 +176,7 @@ ServerDialer.prototype.constructor = ServerDialer;
  */
 ServerDialer.prototype.init =  function() {
     this.socket = io.connect('http://'+serverConfig.url+':'+serverConfig.port);
+    this.gameID = null;
     
     var scope = this;
     this.socket
@@ -141,10 +223,6 @@ ServerDialer.prototype.bindServerEvents = function() {
         alert('A player has quit ! Leaving the room');
         this.gameID=null;
     });
-    this.socket.on('otherPlayerReady', function() {
-        scope.otherPlayerReady = true;
-        scope.dispatchEvent({ type: 'otherPlayerReady' });
-    });
     this.socket.on('launchGame', function() {
         scope.dispatchEvent({ type: 'launchGame' });
     });
@@ -164,6 +242,7 @@ ServerDialer.prototype.onNewGameID = function(data) {
  */
 ServerDialer.prototype.onNewBridge = function() {
     console.log('BRIDGE !');
+    this.dispatchEvent({ type: 'bridge' });
 };
 
 /**
@@ -215,7 +294,7 @@ ServerDialer.prototype.leaveRoom = function() {
 };
 
 module.exports = ServerDialer;
-},{"../events/CustomEventDispatcher":2,"./serverConfig":4}],4:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2,"./serverConfig":8}],8:[function(require,module,exports){
 /**
  * Created by jerek0 on 10/02/2015.
  */
@@ -226,7 +305,7 @@ var serverConfig = {
 }
 
 module.exports = serverConfig;
-},{}],5:[function(require,module,exports){
+},{}],9:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -292,7 +371,7 @@ ChooseCharacter.prototype.chooseCharacter = function(e) {
 
 module.exports = ChooseCharacter;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":9}],6:[function(require,module,exports){
+},{"./Page":13}],10:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 13/02/2015.
@@ -314,49 +393,59 @@ var GamePage = function() {
 GamePage.prototype = new Page();
 GamePage.prototype.constructor = GamePage;
 
+/**
+ * Called when page markup is loaded *
+ */
 GamePage.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
 
     // TODO Watch Memory Here
-    var scope = this;
     var btnBack = document.getElementById("btn-back");
     btnBack.addEventListener('click', function() {
-        //scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
         global.serverDialer.leaveRoom();
     });
-
-    this.registerSync();
-};
-
-GamePage.prototype.registerSync = function() {
-    if(!global.serverDialer.otherPlayerReady) {
-        global.serverDialer.addEventListener('otherPlayerReady', this.onOtherPlayerReadyHandler);
-    } else {
-        this.onOtherPlayerReady();
-    }
-};
-
-GamePage.prototype.onOtherPlayerReady = function() {
-    global.serverDialer.removeEventListener('otherPlayerReady', this.onOtherPlayerReadyHandler);
     
-    document.getElementById("message").innerHTML = "Synced !";
-    global.serverDialer.addEventListener('launchGame', this.launchGameHandler);
+    this.bindServerEvents();
 };
 
+/**
+ * Listen for events coming from the server *
+ */
+GamePage.prototype.bindServerEvents = function () {
+    global.serverDialer.addEventListener('bridge', this.onOtherPlayerReadyHandler);
+    global.serverDialer.addEventListener('launchGame', this.launchGameHandler);
+}
+
+/**
+ * When the players are ready, we notify and wait for the game launch * 
+ */
+GamePage.prototype.onOtherPlayerReady = function() {
+    global.serverDialer.removeEventListener('bridge', this.onOtherPlayerReadyHandler);
+    document.getElementById("message").innerHTML = "Synced !";
+};
+
+/**
+ * Here the fun begins ! Game launch *
+ */
 GamePage.prototype.launchGame = function () {
     global.serverDialer.removeEventListener('launchGame', this.launchGameHandler);
     document.getElementById("message").innerHTML = "GO !";
+    
+    global.gameEngine.rendererController.setState('game');
 };
 
+/**
+ * Override, called when page changes *
+ */
 GamePage.prototype.unbindUiActions = function() {
-    global.serverDialer.removeEventListener('otherPlayerReady', this.onOtherPlayerReadyHandler);
+    global.serverDialer.removeEventListener('bridge', this.onOtherPlayerReadyHandler);
     global.serverDialer.removeEventListener('launchGame', this.launchGameHandler);
 };
 
 module.exports = GamePage;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":9}],7:[function(require,module,exports){
+},{"./Page":13}],11:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -388,7 +477,7 @@ HomePage.prototype.onPageDisplayed = function() {
 };
 
 module.exports = HomePage;
-},{"./Page":9}],8:[function(require,module,exports){
+},{"./Page":13}],12:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 09/02/2015.
@@ -523,7 +612,7 @@ MatchmakingPage.prototype.hostRoom = function() {
 
 module.exports = MatchmakingPage;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":9}],9:[function(require,module,exports){
+},{"./Page":13}],13:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -573,7 +662,7 @@ Page.prototype.unbindUiActions = function() {
 };
 
 module.exports = Page;
-},{"../events/CustomEventDispatcher":2}],10:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],14:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -600,6 +689,7 @@ PageManager.prototype.changePage = function(newPage) {
     this.onChangePageHandler = this.onChangePage.bind(this);
     
     if(this.currentPage) this.currentPage.unbindUiActions();
+    if(this.currentPage instanceof GamePage) global.gameEngine.rendererController.setState('idle');
 
     switch (newPage) {
         case "HomePage":
@@ -649,7 +739,7 @@ PageManager.prototype.updateView = function(template) {
 
 module.exports = PageManager;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ChooseCharacterPage":5,"./GamePage":6,"./HomePage":7,"./MatchmakingPage":8,"./TechnoPage":11}],11:[function(require,module,exports){
+},{"./ChooseCharacterPage":9,"./GamePage":10,"./HomePage":11,"./MatchmakingPage":12,"./TechnoPage":15}],15:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -711,4 +801,4 @@ TechnoPage.prototype.chooseTechno = function() {
 };
 
 module.exports = TechnoPage;
-},{"./Page":9}]},{},[1]);
+},{"./Page":13}]},{},[1]);
