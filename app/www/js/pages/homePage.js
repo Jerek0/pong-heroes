@@ -26,6 +26,9 @@ HomePage.prototype.onPageDisplayed = function() {
     btnPlay.addEventListener('click', function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'TechnoPage' });
     });
+
+    var highscores = document.getElementById("highscore");
+    highscores.innerHTML = localStorage.getItem('PH-highscore') ? localStorage.getItem('PH-highscore') : 0;
 };
 
 module.exports = HomePage;
