@@ -31,7 +31,7 @@ MatchmakingPage.prototype.onPageDisplayed = function() {
     btnBack.addEventListener('click', function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'TechnoPage' });
     });
-    
+
     this.askForRooms();
     this.bindUiActions();
 };

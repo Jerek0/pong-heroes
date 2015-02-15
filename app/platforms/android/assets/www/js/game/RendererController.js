@@ -5,7 +5,7 @@ var GameController = require('./GameController');
 var IdleController = require('./IdleController');
     
 var RendererController = function (wrapperId) {
-    this.renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight, { view: document.getElementById(wrapperId) });
+    this.renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight, { view: document.getElementById(wrapperId) }, false, true);
 
     this.setState('idle');
     

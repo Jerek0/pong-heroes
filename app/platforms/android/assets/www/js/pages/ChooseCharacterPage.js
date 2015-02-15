@@ -24,7 +24,7 @@ ChooseCharacter.prototype.onPageDisplayed = function() {
     var scope = this;
     var btnBack = document.getElementById("btn-back");
     btnBack.addEventListener('click', function() {
-        scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
+        scope.dispatchEvent({ type: 'changePage', newPage: 'TechnoPage' });
         global.serverDialer.leaveRoom();
     });
     

@@ -59,10 +59,13 @@
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/game/IdleController.js \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/game/RendererController.js \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/game/StateController.js \
+/Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/game/zones \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/game/entities/Ball.js \
+/Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/game/zones/Scene.js \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/network/serverConfig.js \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/network/serverConfig_sample.js \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/network/ServerDialer.js \
+/Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/network/ServerGameUpdater.js \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/pages/ChooseCharacterPage.js \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/pages/GamePage.js \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/pages/HomePage.js \

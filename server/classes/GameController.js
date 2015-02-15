@@ -1,6 +1,7 @@
 /**
  * Created by jerek0 on 12/02/2015.
  */
+var ClientDialer = require('./ClientDialer');
     
 // Une instance par paire desktop / mobile
 var GameController = function(io) {
@@ -51,8 +52,24 @@ GameController.prototype.launchGame = function () {
     var scope = this;
     
     setTimeout(function() {
+        scope.bindRequests();
         scope.io.sockets.in(scope.gameID).emit('launchGame');
     }, 1000);
+};
+
+GameController.prototype.bindRequests = function() {
+    this.clientDialer = new ClientDialer(this.client.socket);
+    
+    this.addBallHander = this.clientDialer.addBall.bind(this.clientDialer);
+    this.updateBallHandler = this.clientDialer.updateBall.bind(this.clientDialer);
+    
+    this.host.socket.on('addBall', this.addBallHander);
+    this.host.socket.on('updateBall', this.updateBallHandler);
+};
+
+GameController.prototype.unbindRequests = function() {
+    this.host.socket.removeListener('addBall', this.addBallHander);
+    this.host.socket.removeListener('updateBall', this.updateBallHandler);
 };
 
 GameController.prototype.expulse = function() {
@@ -61,6 +78,7 @@ GameController.prototype.expulse = function() {
 
 GameController.prototype.close = function() {
     this.expulse();
+    this.unbindRequests();
     this.client.socket = null;
     this.host.socket = null;
 }

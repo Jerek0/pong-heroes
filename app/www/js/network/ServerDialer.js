@@ -18,7 +18,7 @@ ServerDialer.prototype.constructor = ServerDialer;
 ServerDialer.prototype.init =  function() {
     this.socket = io.connect('http://'+serverConfig.url+':'+serverConfig.port);
     this.gameID = null;
-    
+
     var scope = this;
     this.socket
         .on('connect', function() {
@@ -62,7 +62,7 @@ ServerDialer.prototype.bindServerEvents = function() {
     this.socket.on('expulsed', function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'MatchmakingPage' });
         alert('A player has quit ! Leaving the room');
-        this.gameID=null;
+        scope.gameID=null;
     });
     this.socket.on('launchGame', function() {
         scope.dispatchEvent({ type: 'launchGame' });
