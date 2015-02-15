@@ -1268,7 +1268,7 @@ TechnoPage.prototype.registerTechnoChoosing = function() {
     this.chooseTechnoHandler = this.chooseTechno.bind(this);
     
     // Listen to every technoChooser
-    this.technoChoosers = document.querySelectorAll('.techno-chooser');
+    this.technoChoosers = document.querySelectorAll('.enabled .techno-chooser');
     var numberOfTechnos = this.technoChoosers.length;
     var i;
     for(i = 0; i < numberOfTechnos; i++) {

@@ -156,6 +156,10 @@ body.desktop .mobile {
     background-color: crimson;
 }
 
+.disabled {
+    opacity: .5;
+}
+
 /* ##### ANIMATIONS ##### */
 
 @-webkit-keyframes bounceIn {
