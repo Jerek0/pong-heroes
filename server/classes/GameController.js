@@ -69,9 +69,11 @@ GameController.prototype.bindRequests = function() {
     }
     
     this.host.socket.on('addBall', this.transmitMessageClientHandler);
+    this.host.socket.on('removeBall', this.transmitMessageClientHandler);
     this.host.socket.on('updateBall', this.transmitMessageClientHandler);
     this.host.socket.on('addPlayer', this.transmitMessageClientHandler);
     this.host.socket.on('updatePlayer', this.transmitMessageClientHandler);
+    this.host.socket.on('scored', this.transmitMessageClientHandler);
 
     // ##### FROM CLIENT TO HOST
     this.hostDialer = new PlayerDialer(this.host.socket);
@@ -89,9 +91,11 @@ GameController.prototype.bindRequests = function() {
 GameController.prototype.unbindRequests = function() {
     if(this.transmitMessageClientHandler && this.transmitMessageHostHandler) {
         this.host.socket.removeListener('addBall', this.transmitMessageClientHandler);
+        this.host.socket.removeListener('removeBall', this.transmitMessageClientHandler);
         this.host.socket.removeListener('updateBall', this.transmitMessageClientHandler);
         this.host.socket.removeListener('addPlayer', this.transmitMessageClientHandler);
         this.host.socket.removeListener('updatePlayer', this.transmitMessageClientHandler);
+        this.host.socket.removeListener('scored', this.transmitMessageClientHandler);
 
         this.client.socket.removeListener('addBall', this.transmitMessageHostHandler);
         this.client.socket.removeListener('addPlayer', this.transmitMessageHostHandler);

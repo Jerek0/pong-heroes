@@ -41,7 +41,7 @@ var app = {
 
 app.initialize();
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./game/RendererController":5,"./network/ServerDialer":12,"./pages/PageManager":20}],2:[function(require,module,exports){
+},{"./game/RendererController":5,"./network/ServerDialer":14,"./pages/PageManager":22}],2:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -92,9 +92,11 @@ var StateController = require('./StateController');
 var Scene = require('./zones/Scene');
 var Ball = require('./entities/Ball');
 var Racket = require('./entities/Racket');
+var Score = require('./entities/Score');
 var KeysManager = require('./controls/KeysManager');
 var GyroManager = require('./controls/GyroManager');
 var ServerGameUpdater = require('../network/ServerGameUpdater');
+var ScoreManager = require('./managers/ScoreManager')
 
 var GameController = function () {
     
@@ -110,6 +112,8 @@ var GameController = function () {
     this.balls = [];
     this.players = [];
     this.player = 0;
+    this.scoreManager = new ScoreManager();
+    this.scores = []; //these are the views, not the model
 
     // NETWORK
     this.serverGameUpdater = new ServerGameUpdater(global.serverDialer.socket, this);
@@ -120,6 +124,11 @@ var GameController = function () {
         this.initClient();
     }
     this.lastUpdate = Date.now();
+
+    var background = new PIXI.Sprite.fromImage('img/background.png');
+    background.width = window.innerWidth;
+    background.height = window.innerHeight;
+    this.stage.addChild(background);
 };
 GameController.prototype = new StateController();
 GameController.prototype.constructor = GameController;
@@ -128,7 +137,7 @@ GameController.prototype.initHost = function () {
     this.player = 0;
     
     // BALLS INIT
-    for(var i = 0; i < 2; i++) {
+    for(var i = 0; i < 4; i++) {
         this.addBall({
             x: (this.scene.baseWidth / 2),
             y: (this.scene.baseHeight / 2)
@@ -167,18 +176,38 @@ GameController.prototype.initControls = function () {
 };
 
 GameController.prototype.update = function () {
+    
     // UPDATE ALL THE BALLS
-    var i, numberOfBalls = this.balls.length;
+    var i, numberOfBalls = this.balls.length, collision;
     for(i = 0; i < numberOfBalls; i++) {
+        // Physics
         this.balls[i].move();
-        this.balls[i].checkBoundariesCollisions(this.boundaries);
         this.balls[i].accelerate();
+        
+        // Collisions
+        if(this.role == "host"){
+            collision = this.balls[i].checkBoundariesCollisions(this.boundaries);
+            if(collision) {
+                this.onScore({ id: parseInt(collision)}, true);
+                
+                if(this.balls.length > 1) {
+                    this.removeBall({id: i}, true);
+                } else{
+                    this.balls[i].reset(new PIXI.Point(this.scene.baseWidth/2, this.scene.baseHeight/2));
+                    this.balls[i].launch();
+                }
+                numberOfBalls = this.balls.length;
+            }
+        }
     }
     
     var numberOfPlayers = this.players.length;
     for(i=0; i < numberOfPlayers; i++) {
         if(this.players[i]) {
+            // If it's our player, apply friction
             if(i == this.player) this.players[i].applyFriction();
+            
+            // Physics
             this.players[i].physics();
             this.players[i].checkBoundariesCollisions();
         }
@@ -230,6 +259,14 @@ GameController.prototype.addBall = function (data, sendToServer) {
     }
 };
 
+GameController.prototype.removeBall = function (data, sendToServer) {
+    this.scene.removeChild(this.balls[data.id]);
+    this.balls.splice(data.id, 1);
+    
+    if(sendToServer)
+        this.serverGameUpdater.removeBall(data);
+};
+
 GameController.prototype.updateBall = function (data) {
     this.balls[data.index].x = data.x;
     this.balls[data.index].y = data.y;
@@ -238,9 +275,19 @@ GameController.prototype.updateBall = function (data) {
 };
 
 GameController.prototype.addPlayer = function (data, sendToServer) {
+    // Add the actual player in the scene
     var player = new Racket(new PIXI.Point(data.x, data.y));
     this.players[data.id] = player;
     this.scene.addChild(this.players[data.id]);
+    
+    // Add it's scores
+    this.scoreManager.addPlayer(data.id);
+    this.scores[data.id] = new Score(
+        new PIXI.Point(
+            ((this.scene.baseWidth / 2 > data.x) ? data.x + 250 : data.x - 350),
+            data.y),
+        '0');
+    this.scene.addChild(this.scores[data.id]);
     
     if(sendToServer)
         this.serverGameUpdater.addPlayer(data);
@@ -249,6 +296,14 @@ GameController.prototype.addPlayer = function (data, sendToServer) {
 GameController.prototype.updatePlayer = function(data) {
     this.players[data.index].y = data.y;
     this.players[data.index].position.deltaY = data.deltaY;
+}
+
+GameController.prototype.onScore = function (data, sendToServer) {
+    this.scoreManager.incrementScore(data.id);
+    this.scores[data.id].updateValue(this.scoreManager.getScoreByPlayer(data.id));
+    
+    if(sendToServer)
+        this.serverGameUpdater.scored({ id: data.id});
 }
 
 GameController.prototype.onResize = function () {
@@ -280,7 +335,7 @@ GameController.prototype.onResize = function () {
 
 module.exports = GameController;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../network/ServerGameUpdater":13,"./StateController":6,"./controls/GyroManager":7,"./controls/KeysManager":8,"./entities/Ball":9,"./entities/Racket":10,"./zones/Scene":11}],4:[function(require,module,exports){
+},{"../network/ServerGameUpdater":15,"./StateController":6,"./controls/GyroManager":7,"./controls/KeysManager":8,"./entities/Ball":9,"./entities/Racket":10,"./entities/Score":11,"./managers/ScoreManager":12,"./zones/Scene":13}],4:[function(require,module,exports){
 /**
  * Created by jerek0 on 14/02/2015.
  */
@@ -331,7 +386,7 @@ var GameController = require('./GameController');
 var IdleController = require('./IdleController');
     
 var RendererController = function (wrapperId) {
-    this.renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight, { view: document.getElementById(wrapperId) }, false, true);
+    this.renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight, { view: document.getElementById(wrapperId), resolution: 2 }, false, true);
 
     this.setState('idle');
     
@@ -497,8 +552,8 @@ Ball.prototype.reset = function (point) {
 };
 
 Ball.prototype.launch = function () {
-    this.position.deltaX = Math.floor((Math.random()*2-1)*10);
-    this.position.deltaY = Math.floor((Math.random()*2-1)*10);
+    this.position.deltaX = Math.floor((Math.random()*2+1)*10);
+    this.position.deltaY = Math.floor((Math.random()*2+1)*10);
 };
 
 Ball.prototype.move = function() {
@@ -512,8 +567,17 @@ Ball.prototype.accelerate = function() {
 };
 
 Ball.prototype.checkBoundariesCollisions = function (Rectangle) {
-    if(this.position.x > Rectangle.width || this.position.x < 0) this.position.deltaX = - this.position.deltaX;
-    if(this.position.y > Rectangle.height || this.position.y < 0 ) this.position.deltaY = - this.position.deltaY;
+    if(this.position.x > Rectangle.width || this.position.x < 0) {
+        this.position.deltaX = - this.position.deltaX;
+        
+        // If there is a collision, we return the player that won
+        if(this.position.x > Rectangle.width) return '0';
+        else return '1';
+    }
+    if(this.position.y > Rectangle.height || this.position.y < 0 ) {
+        this.position.deltaY = - this.position.deltaY;
+    }
+    return false;
 };
 
 module.exports = Ball;
@@ -568,6 +632,51 @@ Racket.prototype.checkBoundariesCollisions = function () {
 module.exports = Racket;
 },{}],11:[function(require,module,exports){
 /**
+ * Created by jerek0 on 15/02/2015.
+ */
+
+var Score = function(position, value) {
+    PIXI.DisplayObjectContainer.call( this );
+    
+    this.x = position.x;
+    this.y = position.y;
+    
+    this.text = new PIXI.Text(value, { font: "bold 256px Slash", fill: "#4A3637", align: "center" });
+    this.text.alpha = 0.5;
+    this.addChild(this.text);
+};
+Score.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
+Score.prototype.constructor = Score;
+
+Score.prototype.updateValue = function (value) {
+    this.text.setText(value);
+}
+
+module.exports = Score;
+},{}],12:[function(require,module,exports){
+/**
+ * Created by jerek0 on 15/02/2015.
+ */
+    
+var ScoreManager = function() {
+    this.scores = [];
+};
+
+ScoreManager.prototype.addPlayer = function (id) {
+    this.scores[id] = 0;
+};
+
+ScoreManager.prototype.getScoreByPlayer = function (id) {
+    return this.scores[id];
+};
+
+ScoreManager.prototype.incrementScore = function (id) {
+    this.scores[id]++;
+};
+
+module.exports = ScoreManager;
+},{}],13:[function(require,module,exports){
+/**
  * Created by jerek0 on 14/02/2015.
  */
 
@@ -587,7 +696,7 @@ Scene.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
 Scene.prototype.constructor = Scene;
 
 module.exports = Scene;
-},{}],12:[function(require,module,exports){
+},{}],14:[function(require,module,exports){
 /**
  * Created by jerek0 on 10/02/2015.
  */
@@ -727,7 +836,7 @@ ServerDialer.prototype.leaveRoom = function() {
 };
 
 module.exports = ServerDialer;
-},{"../events/CustomEventDispatcher":2,"./serverConfig":14}],13:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2,"./serverConfig":16}],15:[function(require,module,exports){
 /**
  * Created by jerek0 on 14/02/2015.
  */
@@ -758,13 +867,26 @@ ServerGameUpdater.prototype.bindServerEvents = function () {
         scope.gameController.addPlayer(data, false);
     });
 
+    this.socket.on('removeBall', function(data) {
+        scope.gameController.removeBall(data, false);
+    });
+
     this.socket.on('updatePlayer', function(data) {
         scope.gameController.updatePlayer(data);
+    });
+
+    this.socket.on('scored', function(data) {
+        scope.gameController.onScore(data, false);
     });
 };
 
 ServerGameUpdater.prototype.addBall= function(data) {
     data.event = 'addBall';
+    this.socket.emit(data.event, data);
+};
+
+ServerGameUpdater.prototype.removeBall= function(data) {
+    data.event = 'removeBall';
     this.socket.emit(data.event, data);
 };
 
@@ -783,8 +905,13 @@ ServerGameUpdater.prototype.updatePlayer = function(data) {
     this.socket.emit(data.event, data);
 };
 
+ServerGameUpdater.prototype.scored = function (data) {
+    data.event = 'scored';
+    this.socket.emit(data.event, data);
+}
+
 module.exports = ServerGameUpdater;
-},{"../events/CustomEventDispatcher":2}],14:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],16:[function(require,module,exports){
 /**
  * Created by jerek0 on 10/02/2015.
  */
@@ -795,7 +922,7 @@ var serverConfig = {
 }
 
 module.exports = serverConfig;
-},{}],15:[function(require,module,exports){
+},{}],17:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -861,7 +988,7 @@ ChooseCharacter.prototype.chooseCharacter = function(e) {
 
 module.exports = ChooseCharacter;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":19}],16:[function(require,module,exports){
+},{"./Page":21}],18:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 13/02/2015.
@@ -935,7 +1062,7 @@ GamePage.prototype.unbindUiActions = function() {
 module.exports = GamePage;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":19}],17:[function(require,module,exports){
+},{"./Page":21}],19:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -967,7 +1094,7 @@ HomePage.prototype.onPageDisplayed = function() {
 };
 
 module.exports = HomePage;
-},{"./Page":19}],18:[function(require,module,exports){
+},{"./Page":21}],20:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 09/02/2015.
@@ -1102,7 +1229,7 @@ MatchmakingPage.prototype.hostRoom = function() {
 
 module.exports = MatchmakingPage;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":19}],19:[function(require,module,exports){
+},{"./Page":21}],21:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -1152,7 +1279,7 @@ Page.prototype.unbindUiActions = function() {
 };
 
 module.exports = Page;
-},{"../events/CustomEventDispatcher":2}],20:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],22:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -1229,7 +1356,7 @@ PageManager.prototype.updateView = function(template) {
 
 module.exports = PageManager;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ChooseCharacterPage":15,"./GamePage":16,"./HomePage":17,"./MatchmakingPage":18,"./TechnoPage":21}],21:[function(require,module,exports){
+},{"./ChooseCharacterPage":17,"./GamePage":18,"./HomePage":19,"./MatchmakingPage":20,"./TechnoPage":23}],23:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -1291,4 +1418,4 @@ TechnoPage.prototype.chooseTechno = function() {
 };
 
 module.exports = TechnoPage;
-},{"./Page":19}]},{},[1]);
+},{"./Page":21}]},{},[1]);

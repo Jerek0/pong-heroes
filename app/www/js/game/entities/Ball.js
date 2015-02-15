@@ -27,8 +27,8 @@ Ball.prototype.reset = function (point) {
 };
 
 Ball.prototype.launch = function () {
-    this.position.deltaX = Math.floor((Math.random()*2-1)*10);
-    this.position.deltaY = Math.floor((Math.random()*2-1)*10);
+    this.position.deltaX = Math.floor((Math.random()*2+1)*10);
+    this.position.deltaY = Math.floor((Math.random()*2+1)*10);
 };
 
 Ball.prototype.move = function() {
@@ -42,8 +42,17 @@ Ball.prototype.accelerate = function() {
 };
 
 Ball.prototype.checkBoundariesCollisions = function (Rectangle) {
-    if(this.position.x > Rectangle.width || this.position.x < 0) this.position.deltaX = - this.position.deltaX;
-    if(this.position.y > Rectangle.height || this.position.y < 0 ) this.position.deltaY = - this.position.deltaY;
+    if(this.position.x > Rectangle.width || this.position.x < 0) {
+        this.position.deltaX = - this.position.deltaX;
+        
+        // If there is a collision, we return the player that won
+        if(this.position.x > Rectangle.width) return '0';
+        else return '1';
+    }
+    if(this.position.y > Rectangle.height || this.position.y < 0 ) {
+        this.position.deltaY = - this.position.deltaY;
+    }
+    return false;
 };
 
 module.exports = Ball;
