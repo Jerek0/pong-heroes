@@ -21,6 +21,7 @@ var GameController = function () {
     // ENTITIES
     this.balls = [];
     this.players = [];
+    this.player = 0;
 
     // NETWORK
     this.serverGameUpdater = new ServerGameUpdater(global.serverDialer.socket, this);
@@ -36,6 +37,7 @@ GameController.prototype = new StateController();
 GameController.prototype.constructor = GameController;
 
 GameController.prototype.initHost = function () {
+    this.player = 0;
     
     // BALLS INIT
     for(var i = 0; i < 2; i++) {
@@ -47,23 +49,25 @@ GameController.prototype.initHost = function () {
     
     // PLAYER INIT
     this.addPlayer({
-        id: 0,
+        id: this.player,
         x: 20,
         y: this.scene.baseHeight/2
     }, true);
     
-    this.controlsManager = new KeysManager(this.players[0]);
+    this.controlsManager = new KeysManager(this.players[this.player]);
 };
 
 GameController.prototype.initClient = function () {
+    this.player = 1;
+    
     // PLAYER INIT
     this.addPlayer({
-        id: 1,
+        id: this.player,
         x: this.scene.baseWidth - 40,
         y: this.scene.baseHeight / 2
     }, true);
 
-    this.controlsManager = new KeysManager(this.players[1]);
+    this.controlsManager = new KeysManager(this.players[this.player]);
 };
 
 GameController.prototype.update = function () {
@@ -77,10 +81,14 @@ GameController.prototype.update = function () {
     
     var numberOfPlayers = this.players.length;
     for(i=0; i < numberOfPlayers; i++) {
-        if(this.players[i]) this.players[i].move();
+        if(this.players[i]) {
+            if(i == this.player) this.players[i].applyFriction();
+            this.players[i].physics();
+            this.players[i].checkBoundariesCollisions();
+        }
     };
     
-    if((Date.now() - this.lastUpdate) > (1000/10) ) {
+    if((Date.now() - this.lastUpdate) > (1000/25) ) {
         this.lastUpdate = Date.now();
         
         // SI ON EST LE HOST, ON UPDATE LES DELTA
