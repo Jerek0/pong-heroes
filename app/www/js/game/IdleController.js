@@ -14,7 +14,7 @@ var IdleController = function () {
         this.balls[i] = new Ball();
 
         this.balls[i].reset(new PIXI.Point(window.innerWidth / 2 , window.innerHeight / 2));
-        this.balls[i].launch();
+        this.balls[i].launch(Math.round((Math.random()*2-1)*10), Math.round((Math.random()*2-1)*10));
         this.balls[i].alpha = 0.5;
 
         this.stage.addChild(this.balls[i]);

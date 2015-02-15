@@ -50,7 +50,7 @@ GameController.prototype.initHost = function () {
     this.player = 0;
     
     // BALLS INIT
-    for(var i = 0; i < 4; i++) {
+    for(var i = 0; i < 16; i++) {
         this.addBall({
             x: (this.scene.baseWidth / 2),
             y: (this.scene.baseHeight / 2)
@@ -90,8 +90,11 @@ GameController.prototype.initControls = function () {
 
 GameController.prototype.update = function () {
     
+    var numberOfBalls = this.balls.length,
+        numberOfPlayers = this.players.length,
+        i, collision, j;
+
     // UPDATE ALL THE BALLS
-    var i, numberOfBalls = this.balls.length, collision;
     for(i = 0; i < numberOfBalls; i++) {
         // Physics
         this.balls[i].move();
@@ -99,6 +102,10 @@ GameController.prototype.update = function () {
         
         // Collisions
         if(this.role == "host"){
+            for(j=0;j<numberOfPlayers;j++) {
+                this.balls[i].checkPlayersCollisions(this.players[j]);
+            }
+            
             collision = this.balls[i].checkBoundariesCollisions(this.boundaries);
             if(collision) {
                 this.onScore({ id: parseInt(collision)}, true);
@@ -114,7 +121,6 @@ GameController.prototype.update = function () {
         }
     }
     
-    var numberOfPlayers = this.players.length;
     for(i=0; i < numberOfPlayers; i++) {
         if(this.players[i]) {
             // If it's our player, apply friction

@@ -5,9 +5,11 @@ var StateController = require('./StateController');
 var Scene = require('./zones/Scene');
 var Ball = require('./entities/Ball');
 var Racket = require('./entities/Racket');
+var Score = require('./entities/Score');
 var KeysManager = require('./controls/KeysManager');
 var GyroManager = require('./controls/GyroManager');
 var ServerGameUpdater = require('../network/ServerGameUpdater');
+var ScoreManager = require('./managers/ScoreManager')
 
 var GameController = function () {
     
@@ -23,6 +25,8 @@ var GameController = function () {
     this.balls = [];
     this.players = [];
     this.player = 0;
+    this.scoreManager = new ScoreManager();
+    this.scores = []; //these are the views, not the model
 
     // NETWORK
     this.serverGameUpdater = new ServerGameUpdater(global.serverDialer.socket, this);
@@ -33,6 +37,11 @@ var GameController = function () {
         this.initClient();
     }
     this.lastUpdate = Date.now();
+
+    var background = new PIXI.Sprite.fromImage('img/background.png');
+    background.width = window.innerWidth;
+    background.height = window.innerHeight;
+    this.stage.addChild(background);
 };
 GameController.prototype = new StateController();
 GameController.prototype.constructor = GameController;
@@ -41,7 +50,7 @@ GameController.prototype.initHost = function () {
     this.player = 0;
     
     // BALLS INIT
-    for(var i = 0; i < 2; i++) {
+    for(var i = 0; i < 16; i++) {
         this.addBall({
             x: (this.scene.baseWidth / 2),
             y: (this.scene.baseHeight / 2)
@@ -80,18 +89,44 @@ GameController.prototype.initControls = function () {
 };
 
 GameController.prototype.update = function () {
+    
+    var numberOfBalls = this.balls.length,
+        numberOfPlayers = this.players.length,
+        i, collision, j;
+
     // UPDATE ALL THE BALLS
-    var i, numberOfBalls = this.balls.length;
     for(i = 0; i < numberOfBalls; i++) {
+        // Physics
         this.balls[i].move();
-        this.balls[i].checkBoundariesCollisions(this.boundaries);
         this.balls[i].accelerate();
+        
+        // Collisions
+        if(this.role == "host"){
+            for(j=0;j<numberOfPlayers;j++) {
+                this.balls[i].checkPlayersCollisions(this.players[j]);
+            }
+            
+            collision = this.balls[i].checkBoundariesCollisions(this.boundaries);
+            if(collision) {
+                this.onScore({ id: parseInt(collision)}, true);
+                
+                if(this.balls.length > 1) {
+                    this.removeBall({id: i}, true);
+                } else{
+                    this.balls[i].reset(new PIXI.Point(this.scene.baseWidth/2, this.scene.baseHeight/2));
+                    this.balls[i].launch();
+                }
+                numberOfBalls = this.balls.length;
+            }
+        }
     }
     
-    var numberOfPlayers = this.players.length;
     for(i=0; i < numberOfPlayers; i++) {
         if(this.players[i]) {
+            // If it's our player, apply friction
             if(i == this.player) this.players[i].applyFriction();
+            
+            // Physics
             this.players[i].physics();
             this.players[i].checkBoundariesCollisions();
         }
@@ -143,6 +178,14 @@ GameController.prototype.addBall = function (data, sendToServer) {
     }
 };
 
+GameController.prototype.removeBall = function (data, sendToServer) {
+    this.scene.removeChild(this.balls[data.id]);
+    this.balls.splice(data.id, 1);
+    
+    if(sendToServer)
+        this.serverGameUpdater.removeBall(data);
+};
+
 GameController.prototype.updateBall = function (data) {
     this.balls[data.index].x = data.x;
     this.balls[data.index].y = data.y;
@@ -151,9 +194,19 @@ GameController.prototype.updateBall = function (data) {
 };
 
 GameController.prototype.addPlayer = function (data, sendToServer) {
+    // Add the actual player in the scene
     var player = new Racket(new PIXI.Point(data.x, data.y));
     this.players[data.id] = player;
     this.scene.addChild(this.players[data.id]);
+    
+    // Add it's scores
+    this.scoreManager.addPlayer(data.id);
+    this.scores[data.id] = new Score(
+        new PIXI.Point(
+            ((this.scene.baseWidth / 2 > data.x) ? data.x + 250 : data.x - 350),
+            data.y),
+        '0');
+    this.scene.addChild(this.scores[data.id]);
     
     if(sendToServer)
         this.serverGameUpdater.addPlayer(data);
@@ -162,6 +215,14 @@ GameController.prototype.addPlayer = function (data, sendToServer) {
 GameController.prototype.updatePlayer = function(data) {
     this.players[data.index].y = data.y;
     this.players[data.index].position.deltaY = data.deltaY;
+}
+
+GameController.prototype.onScore = function (data, sendToServer) {
+    this.scoreManager.incrementScore(data.id);
+    this.scores[data.id].updateValue(this.scoreManager.getScoreByPlayer(data.id));
+    
+    if(sendToServer)
+        this.serverGameUpdater.scored({ id: data.id});
 }
 
 GameController.prototype.onResize = function () {

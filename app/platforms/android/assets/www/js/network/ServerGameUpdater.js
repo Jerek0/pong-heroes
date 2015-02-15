@@ -28,13 +28,26 @@ ServerGameUpdater.prototype.bindServerEvents = function () {
         scope.gameController.addPlayer(data, false);
     });
 
+    this.socket.on('removeBall', function(data) {
+        scope.gameController.removeBall(data, false);
+    });
+
     this.socket.on('updatePlayer', function(data) {
         scope.gameController.updatePlayer(data);
+    });
+
+    this.socket.on('scored', function(data) {
+        scope.gameController.onScore(data, false);
     });
 };
 
 ServerGameUpdater.prototype.addBall= function(data) {
     data.event = 'addBall';
+    this.socket.emit(data.event, data);
+};
+
+ServerGameUpdater.prototype.removeBall= function(data) {
+    data.event = 'removeBall';
     this.socket.emit(data.event, data);
 };
 
@@ -52,5 +65,10 @@ ServerGameUpdater.prototype.updatePlayer = function(data) {
     data.event = 'updatePlayer';
     this.socket.emit(data.event, data);
 };
+
+ServerGameUpdater.prototype.scored = function (data) {
+    data.event = 'scored';
+    this.socket.emit(data.event, data);
+}
 
 module.exports = ServerGameUpdater;
