@@ -27,8 +27,8 @@ Ball.prototype.reset = function (point) {
 };
 
 Ball.prototype.launch = function () {
-    this.position.deltaX = Math.floor((Math.random()*2+1)*10);
-    this.position.deltaY = Math.floor((Math.random()*2+1)*10);
+    this.position.deltaX = Math.round((Math.random()*2-1)*10);
+    this.position.deltaY = Math.round((Math.random()*2-1)*10);
 };
 
 Ball.prototype.move = function() {
