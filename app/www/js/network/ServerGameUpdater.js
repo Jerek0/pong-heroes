@@ -24,21 +24,33 @@ ServerGameUpdater.prototype.bindServerEvents = function () {
         scope.gameController.updateBall(data);
     });
 
+    this.socket.on('addPlayer', function(data) {
+        scope.gameController.addPlayer(data, false);
+    });
+
     this.socket.on('updatePlayer', function(data) {
         scope.gameController.updatePlayer(data);
     });
 };
 
 ServerGameUpdater.prototype.addBall= function(data) {
-    this.socket.emit('addBall', data);
+    data.event = 'addBall';
+    this.socket.emit(data.event, data);
 };
 
 ServerGameUpdater.prototype.updateBall= function(data) {
-    this.socket.emit('updateBall', data);
+    data.event = 'updateBall';
+    this.socket.emit(data.event, data);
+};
+
+ServerGameUpdater.prototype.addPlayer = function(data) {
+    data.event = 'addPlayer';
+    this.socket.emit(data.event, data);
 };
 
 ServerGameUpdater.prototype.updatePlayer = function(data) {
-    this.socket.emit('updatePlayer', data);
+    data.event = 'updatePlayer';
+    this.socket.emit(data.event, data);
 };
 
 module.exports = ServerGameUpdater;

@@ -54,7 +54,7 @@ GamePage.prototype.onOtherPlayerReady = function() {
  */
 GamePage.prototype.launchGame = function () {
     global.serverDialer.removeEventListener('launchGame', this.launchGameHandler);
-    document.getElementById("message").innerHTML = "GO !";
+    document.getElementById("message").innerHTML = "";
     
     global.gameEngine.rendererController.setState('game');
 };

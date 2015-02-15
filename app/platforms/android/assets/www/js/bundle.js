@@ -137,14 +137,14 @@ GameController.prototype.update = function () {
         this.balls[i].accelerate();
     }
     
-    if(this.role == 'host' && (Date.now() - this.lastUpdate) > (1000/120) ) {
+    if(this.role == 'host' && (Date.now() - this.lastUpdate) > (1000/10) ) {
         this.lastUpdate = Date.now();
 
         for(i = 0; i < numberOfBalls; i++) {
             this.serverGameUpdater.updateBall({
                 index: i,
-                deltaX: this.balls[i].deltaX,
-                deltaY: this.balls[i].deltaY,
+                deltaX: this.balls[i].position.deltaX,
+                deltaY: this.balls[i].position.deltaY,
                 x: this.balls[i].x,
                 y: this.balls[i].y
             });
@@ -167,8 +167,8 @@ GameController.prototype.addBall = function (data) {
 GameController.prototype.updateBall = function (data) {
     this.balls[data.index].x = data.x;
     this.balls[data.index].y = data.y;
-    this.balls[data.index].deltaX = data.deltaX;
-    this.balls[data.index].deltaY = data.deltaY;
+    this.balls[data.index].position.deltaX = data.deltaX;
+    this.balls[data.index].position.deltaY = data.deltaY;
 };
 
 GameController.prototype.onResize = function () {

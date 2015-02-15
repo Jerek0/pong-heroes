@@ -1,7 +1,7 @@
 /**
  * Created by jerek0 on 12/02/2015.
  */
-var ClientDialer = require('./ClientDialer');
+var PlayerDialer = require('./PlayerDialer');
     
 // Une instance par paire desktop / mobile
 var GameController = function(io) {
@@ -58,18 +58,45 @@ GameController.prototype.launchGame = function () {
 };
 
 GameController.prototype.bindRequests = function() {
-    this.clientDialer = new ClientDialer(this.client.socket);
+    var scope = this;
     
-    this.addBallHander = this.clientDialer.addBall.bind(this.clientDialer);
-    this.updateBallHandler = this.clientDialer.updateBall.bind(this.clientDialer);
+    // ##### FROM HOST TO CLIENT
+    this.clientDialer = new PlayerDialer(this.client.socket);
     
-    this.host.socket.on('addBall', this.addBallHander);
-    this.host.socket.on('updateBall', this.updateBallHandler);
+    // Function called when a socket from host to client is received
+    this.transmitMessageClientHandler = function(data) {
+        scope.clientDialer.transmitMessage(data.event, data);
+    }
+    
+    this.host.socket.on('addBall', this.transmitMessageClientHandler);
+    this.host.socket.on('updateBall', this.transmitMessageClientHandler);
+    this.host.socket.on('addPlayer', this.transmitMessageClientHandler);
+    this.host.socket.on('updatePlayer', this.transmitMessageClientHandler);
+
+    // ##### FROM CLIENT TO HOST
+    this.hostDialer = new PlayerDialer(this.host.socket);
+
+    // Function called when a socket from client to host is received
+    this.transmitMessageHostHandler = function(data) {
+        scope.hostDialer.transmitMessage(data.event, data);
+    }
+
+    this.client.socket.on('addBall', this.transmitMessageHostHandler);
+    this.client.socket.on('addPlayer', this.transmitMessageHostHandler);
+    this.client.socket.on('updatePlayer', this.transmitMessageHostHandler);
 };
 
 GameController.prototype.unbindRequests = function() {
-    this.host.socket.removeListener('addBall', this.addBallHander);
-    this.host.socket.removeListener('updateBall', this.updateBallHandler);
+    if(this.transmitMessageClientHandler && this.transmitMessageHostHandler) {
+        this.host.socket.removeListener('addBall', this.transmitMessageClientHandler);
+        this.host.socket.removeListener('updateBall', this.transmitMessageClientHandler);
+        this.host.socket.removeListener('addPlayer', this.transmitMessageClientHandler);
+        this.host.socket.removeListener('updatePlayer', this.transmitMessageClientHandler);
+
+        this.client.socket.removeListener('addBall', this.transmitMessageHostHandler);
+        this.client.socket.removeListener('addPlayer', this.transmitMessageHostHandler);
+        this.client.socket.removeListener('updatePlayer', this.transmitMessageHostHandler);
+    }
 };
 
 GameController.prototype.expulse = function() {

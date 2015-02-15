@@ -4,41 +4,66 @@
 var StateController = require('./StateController');
 var Scene = require('./zones/Scene');
 var Ball = require('./entities/Ball');
+var Racket = require('./entities/Racket');
+var KeysManager = require('./controls/KeysManager');
 var ServerGameUpdater = require('../network/ServerGameUpdater');
 
 var GameController = function () {
     
+    // STAGE AND SCENE SETTINGS
+    this.stage = new PIXI.Stage(0x4A3637); // Tha background
+    this.scene = new Scene(1280,1024); // The zone where we'll play with the default size
+    this.stage.addChild(this.scene);
+    this.onResize(); // Center and resize the scene according to it's ratio
+    window.onresize = this.onResize.bind(this);
+    this.boundaries = new PIXI.Rectangle(0,0,1280,1024); // Frame collisions
+
+    // ENTITIES
+    this.balls = [];
+    this.players = [];
+
     // NETWORK
     this.serverGameUpdater = new ServerGameUpdater(global.serverDialer.socket, this);
     this.role = localStorage.getItem('PH-role');
-    
-    // FRONT
-    this.stage = new PIXI.Stage(0x4A3637);
-    
-    this.scene = new Scene(1280,1024);
-    this.stage.addChild(this.scene);
-    this.onResize();
-    window.onresize = this.onResize.bind(this);
-    
-    this.boundaries = new PIXI.Rectangle(0,0,1280,1024);
-
-    this.balls = [];
-    
-    if(this.role == 'host') this.initHost();
-    
+    if(this.role == 'host') {
+        this.initHost();
+    } else {
+        this.initClient();
+    }
     this.lastUpdate = Date.now();
 };
 GameController.prototype = new StateController();
 GameController.prototype.constructor = GameController;
 
 GameController.prototype.initHost = function () {
+    
+    // BALLS INIT
     for(var i = 0; i < 2; i++) {
-        var scope = this;
         this.addBall({
-            x: (scope.scene.baseWidth / 2),
-            y: (scope.scene.baseHeight / 2)
-        });
+            x: (this.scene.baseWidth / 2),
+            y: (this.scene.baseHeight / 2)
+        }, true);
     }
+    
+    // PLAYER INIT
+    this.addPlayer({
+        id: 0,
+        x: 20,
+        y: this.scene.baseHeight/2
+    }, true);
+    
+    this.controlsManager = new KeysManager(this.players[0]);
+};
+
+GameController.prototype.initClient = function () {
+    // PLAYER INIT
+    this.addPlayer({
+        id: 1,
+        x: this.scene.baseWidth - 40,
+        y: this.scene.baseHeight / 2
+    }, true);
+
+    this.controlsManager = new KeysManager(this.players[1]);
 };
 
 GameController.prototype.update = function () {
@@ -50,28 +75,52 @@ GameController.prototype.update = function () {
         this.balls[i].accelerate();
     }
     
-    if(this.role == 'host' && (Date.now() - this.lastUpdate) > (1000/10) ) {
+    var numberOfPlayers = this.players.length;
+    for(i=0; i < numberOfPlayers; i++) {
+        if(this.players[i]) this.players[i].move();
+    };
+    
+    if((Date.now() - this.lastUpdate) > (1000/10) ) {
         this.lastUpdate = Date.now();
+        
+        // SI ON EST LE HOST, ON UPDATE LES DELTA
+        if(this.role == 'host') {
+            for(i = 0; i < numberOfBalls; i++) {
+                this.serverGameUpdater.updateBall({
+                    index: i,
+                    deltaX: this.balls[i].position.deltaX,
+                    deltaY: this.balls[i].position.deltaY,
+                    x: this.balls[i].x,
+                    y: this.balls[i].y
+                });
+            }
 
-        for(i = 0; i < numberOfBalls; i++) {
-            this.serverGameUpdater.updateBall({
-                index: i,
-                deltaX: this.balls[i].position.deltaX,
-                deltaY: this.balls[i].position.deltaY,
-                x: this.balls[i].x,
-                y: this.balls[i].y
-            });
+            if(this.players[0]) {
+                this.serverGameUpdater.updatePlayer({
+                    index: 0,
+                    deltaY: this.players[0].position.deltaY,
+                    y: this.players[0].y
+                });
+            }
+        } else {
+            if(this.players[1]){
+                this.serverGameUpdater.updatePlayer({
+                    index: 1,
+                    deltaY: this.players[1].position.deltaY,
+                    y: this.players[1].y
+                });
+            }
         }
     }
 };
 
-GameController.prototype.addBall = function (data) {
+GameController.prototype.addBall = function (data, sendToServer) {
     var ball = new Ball();
     ball.reset(new PIXI.Point(data.x, data.y));
     this.balls.push(ball);
     this.scene.addChild(this.balls[this.balls.length-1]);
 
-    if(this.role == 'host'){
+    if(sendToServer){
         this.serverGameUpdater.addBall(data);
         this.balls[this.balls.length-1].launch();
     }
@@ -83,6 +132,20 @@ GameController.prototype.updateBall = function (data) {
     this.balls[data.index].position.deltaX = data.deltaX;
     this.balls[data.index].position.deltaY = data.deltaY;
 };
+
+GameController.prototype.addPlayer = function (data, sendToServer) {
+    var player = new Racket(new PIXI.Point(data.x, data.y));
+    this.players[data.id] = player;
+    this.scene.addChild(this.players[data.id]);
+    
+    if(sendToServer)
+        this.serverGameUpdater.addPlayer(data);
+};
+
+GameController.prototype.updatePlayer = function(data) {
+    this.players[data.index].y = data.y;
+    this.players[data.index].position.deltaY = data.deltaY;
+}
 
 GameController.prototype.onResize = function () {
     var newWidth = window.innerWidth;
