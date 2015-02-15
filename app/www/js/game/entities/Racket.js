@@ -10,7 +10,7 @@ var Racket = function (position) {
     
     this.position.deltaY = 0;
     this.friction = 0.9;
-    this.acceleration = 4;
+    this.acceleration = 2;
     
     this.graphics = new PIXI.Graphics();
     this.graphics.beginFill(0x4A3637);

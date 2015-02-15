@@ -41,7 +41,7 @@ var app = {
 
 app.initialize();
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./game/RendererController":5,"./network/ServerDialer":9,"./pages/PageManager":17}],2:[function(require,module,exports){
+},{"./game/RendererController":5,"./network/ServerDialer":12,"./pages/PageManager":20}],2:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -91,40 +91,78 @@ module.exports = CustomEventDispatcher;
 var StateController = require('./StateController');
 var Scene = require('./zones/Scene');
 var Ball = require('./entities/Ball');
+var Racket = require('./entities/Racket');
+var KeysManager = require('./controls/KeysManager');
+var GyroManager = require('./controls/GyroManager');
 var ServerGameUpdater = require('../network/ServerGameUpdater');
 
 var GameController = function () {
     
+    // STAGE AND SCENE SETTINGS
+    this.stage = new PIXI.Stage(0x4A3637); // Tha background
+    this.scene = new Scene(1280,1024); // The zone where we'll play with the default size
+    this.stage.addChild(this.scene);
+    this.onResize(); // Center and resize the scene according to it's ratio
+    window.onresize = this.onResize.bind(this);
+    this.boundaries = new PIXI.Rectangle(0,0,1280,1024); // Frame collisions
+
+    // ENTITIES
+    this.balls = [];
+    this.players = [];
+    this.player = 0;
+
     // NETWORK
     this.serverGameUpdater = new ServerGameUpdater(global.serverDialer.socket, this);
     this.role = localStorage.getItem('PH-role');
-    
-    // FRONT
-    this.stage = new PIXI.Stage(0x4A3637);
-    
-    this.scene = new Scene(1280,1024);
-    this.stage.addChild(this.scene);
-    this.onResize();
-    window.onresize = this.onResize.bind(this);
-    
-    this.boundaries = new PIXI.Rectangle(0,0,1280,1024);
-
-    this.balls = [];
-    
-    if(this.role == 'host') this.initHost();
-    
+    if(this.role == 'host') {
+        this.initHost();
+    } else {
+        this.initClient();
+    }
     this.lastUpdate = Date.now();
 };
 GameController.prototype = new StateController();
 GameController.prototype.constructor = GameController;
 
 GameController.prototype.initHost = function () {
+    this.player = 0;
+    
+    // BALLS INIT
     for(var i = 0; i < 2; i++) {
-        var scope = this;
         this.addBall({
-            x: (scope.scene.baseWidth / 2),
-            y: (scope.scene.baseHeight / 2)
-        });
+            x: (this.scene.baseWidth / 2),
+            y: (this.scene.baseHeight / 2)
+        }, true);
+    }
+    
+    // PLAYER INIT
+    this.addPlayer({
+        id: this.player,
+        x: 20,
+        y: this.scene.baseHeight/2
+    }, true);
+    
+    this.initControls();
+};
+
+GameController.prototype.initClient = function () {
+    this.player = 1;
+
+    // PLAYER INIT
+    this.addPlayer({
+        id: this.player,
+        x: this.scene.baseWidth - 40,
+        y: this.scene.baseHeight / 2
+    }, true);
+
+    this.initControls();
+};
+
+GameController.prototype.initControls = function () {
+    if(localStorage.getItem('PH-tech') == 'gyro') {
+        this.controlsManager = new GyroManager(this.players[this.player]);
+    } else {
+        this.controlsManager = new KeysManager(this.players[this.player]);
     }
 };
 
@@ -137,28 +175,56 @@ GameController.prototype.update = function () {
         this.balls[i].accelerate();
     }
     
-    if(this.role == 'host' && (Date.now() - this.lastUpdate) > (1000/10) ) {
+    var numberOfPlayers = this.players.length;
+    for(i=0; i < numberOfPlayers; i++) {
+        if(this.players[i]) {
+            if(i == this.player) this.players[i].applyFriction();
+            this.players[i].physics();
+            this.players[i].checkBoundariesCollisions();
+        }
+    };
+    
+    if((Date.now() - this.lastUpdate) > (1000/25) ) {
         this.lastUpdate = Date.now();
+        
+        // SI ON EST LE HOST, ON UPDATE LES DELTA
+        if(this.role == 'host') {
+            for(i = 0; i < numberOfBalls; i++) {
+                this.serverGameUpdater.updateBall({
+                    index: i,
+                    deltaX: this.balls[i].position.deltaX,
+                    deltaY: this.balls[i].position.deltaY,
+                    x: this.balls[i].x,
+                    y: this.balls[i].y
+                });
+            }
 
-        for(i = 0; i < numberOfBalls; i++) {
-            this.serverGameUpdater.updateBall({
-                index: i,
-                deltaX: this.balls[i].position.deltaX,
-                deltaY: this.balls[i].position.deltaY,
-                x: this.balls[i].x,
-                y: this.balls[i].y
-            });
+            if(this.players[0]) {
+                this.serverGameUpdater.updatePlayer({
+                    index: 0,
+                    deltaY: this.players[0].position.deltaY,
+                    y: this.players[0].y
+                });
+            }
+        } else {
+            if(this.players[1]){
+                this.serverGameUpdater.updatePlayer({
+                    index: 1,
+                    deltaY: this.players[1].position.deltaY,
+                    y: this.players[1].y
+                });
+            }
         }
     }
 };
 
-GameController.prototype.addBall = function (data) {
+GameController.prototype.addBall = function (data, sendToServer) {
     var ball = new Ball();
     ball.reset(new PIXI.Point(data.x, data.y));
     this.balls.push(ball);
     this.scene.addChild(this.balls[this.balls.length-1]);
 
-    if(this.role == 'host'){
+    if(sendToServer){
         this.serverGameUpdater.addBall(data);
         this.balls[this.balls.length-1].launch();
     }
@@ -170,6 +236,20 @@ GameController.prototype.updateBall = function (data) {
     this.balls[data.index].position.deltaX = data.deltaX;
     this.balls[data.index].position.deltaY = data.deltaY;
 };
+
+GameController.prototype.addPlayer = function (data, sendToServer) {
+    var player = new Racket(new PIXI.Point(data.x, data.y));
+    this.players[data.id] = player;
+    this.scene.addChild(this.players[data.id]);
+    
+    if(sendToServer)
+        this.serverGameUpdater.addPlayer(data);
+};
+
+GameController.prototype.updatePlayer = function(data) {
+    this.players[data.index].y = data.y;
+    this.players[data.index].position.deltaY = data.deltaY;
+}
 
 GameController.prototype.onResize = function () {
     var newWidth = window.innerWidth;
@@ -200,7 +280,7 @@ GameController.prototype.onResize = function () {
 
 module.exports = GameController;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../network/ServerGameUpdater":10,"./StateController":6,"./entities/Ball":7,"./zones/Scene":8}],4:[function(require,module,exports){
+},{"../network/ServerGameUpdater":13,"./StateController":6,"./controls/GyroManager":7,"./controls/KeysManager":8,"./entities/Ball":9,"./entities/Racket":10,"./zones/Scene":11}],4:[function(require,module,exports){
 /**
  * Created by jerek0 on 14/02/2015.
  */
@@ -242,7 +322,7 @@ IdleController.prototype.update = function() {
 };
 
 module.exports = IdleController;
-},{"./StateController":6,"./entities/Ball":7}],5:[function(require,module,exports){
+},{"./StateController":6,"./entities/Ball":9}],5:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 14/02/2015.
@@ -303,6 +383,92 @@ StateController.prototype.update = function() {
 module.exports = StateController;
 },{}],7:[function(require,module,exports){
 /**
+ * Created by jerek0 on 15/02/2015.
+ */
+
+var GyroManager = function(racket) {
+    this.racket = racket;
+    
+    window.addEventListener("deviceorientation", this.bindOrientation.bind(this), false);
+    
+    requestAnimationFrame(this.update.bind(this));
+};
+
+GyroManager.prototype.bindOrientation = function (e) {
+    //var alpha = e.alpha;
+    //var beta = e.beta;
+    var gamma = e.gamma + 20; // -20 allows to play a little bended
+    if(gamma < 2 && gamma > -2) gamma = 0;
+    var percentage = 1 * gamma / -20;
+    
+    if(percentage > 1) percentage = 1;
+    else if( percentage < -1) percentage = -1;
+    
+    console.log(percentage);
+    
+    this.racket.position.deltaY += this.racket.acceleration * 4 * percentage;
+};
+
+GyroManager.prototype.update = function () {
+
+    requestAnimationFrame(this.update.bind(this));
+};
+
+module.exports = GyroManager;
+},{}],8:[function(require,module,exports){
+/**
+ * Created by jerek0 on 15/02/2015.
+ */
+
+var KeysManager = function(racket) {
+    this.racket = racket;
+    
+    this.keyMap = {
+        up: false,
+        down: false
+    }
+    
+    window.addEventListener('keydown', this.bindKeyDown.bind(this), false);
+    window.addEventListener('keyup', this.bindKeyUp.bind(this), false);
+    
+    requestAnimationFrame(this.update.bind(this));
+};
+
+KeysManager.prototype.bindKeyDown = function (e) {
+    var key = e.keyCode ? e.keyCode : e.which;
+    
+    switch (key) {
+        case 40:
+            this.keyMap.down = true;
+            break;
+        case 38:
+            this.keyMap.up = true;
+            break;
+    }
+};
+
+KeysManager.prototype.bindKeyUp = function(e) {
+    var key = e.keyCode ? e.keyCode : e.which;
+    
+    switch (key) {
+        case 40:
+            this.keyMap.down = false;
+        case 38: 
+            this.keyMap.up = false;
+    }
+    
+}
+
+KeysManager.prototype.update = function () {
+    if(this.keyMap.up) this.racket.position.deltaY += -this.racket.acceleration;
+    if(this.keyMap.down) this.racket.position.deltaY += this.racket.acceleration;
+    
+    requestAnimationFrame(this.update.bind(this));
+};
+
+module.exports = KeysManager;
+},{}],9:[function(require,module,exports){
+/**
  * Created by jerek0 on 14/02/2015.
  */
 
@@ -351,7 +517,56 @@ Ball.prototype.checkBoundariesCollisions = function (Rectangle) {
 };
 
 module.exports = Ball;
-},{}],8:[function(require,module,exports){
+},{}],10:[function(require,module,exports){
+/**
+ * Created by jerek0 on 15/02/2015.
+ */
+
+var Racket = function (position) {
+    PIXI.DisplayObjectContainer.call( this );
+    
+    this.position.x = position.x;
+    this.position.y = position.y;
+    
+    this.position.deltaY = 0;
+    this.friction = 0.9;
+    this.acceleration = 2;
+    
+    this.graphics = new PIXI.Graphics();
+    this.graphics.beginFill(0x4A3637);
+    this.graphics.drawRect(0,0,20,80);
+    this.addChild(this.graphics);
+    
+};
+Racket.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
+Racket.prototype.constructor = Racket;
+
+Racket.prototype.move = function(delta) {
+    this.position.deltaY += delta;
+};
+
+Racket.prototype.applyFriction = function () {
+    this.position.deltaY *= this.friction;
+}
+
+Racket.prototype.physics = function() {
+    this.position.y += this.position.deltaY;
+}
+
+Racket.prototype.checkBoundariesCollisions = function () {
+    if(this.position.y >= (this.parent.baseHeight - this.height) || this.position.y <= 0) {
+        if(this.position.y >= (this.parent.baseHeight - this.height)) {
+            this.position.y = this.parent.baseHeight - this.height;
+        } else {
+            this.position.y = 0;
+        }
+        
+        this.position.deltaY = -this.position.deltaY;
+    }
+};
+
+module.exports = Racket;
+},{}],11:[function(require,module,exports){
 /**
  * Created by jerek0 on 14/02/2015.
  */
@@ -372,7 +587,7 @@ Scene.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
 Scene.prototype.constructor = Scene;
 
 module.exports = Scene;
-},{}],9:[function(require,module,exports){
+},{}],12:[function(require,module,exports){
 /**
  * Created by jerek0 on 10/02/2015.
  */
@@ -512,7 +727,7 @@ ServerDialer.prototype.leaveRoom = function() {
 };
 
 module.exports = ServerDialer;
-},{"../events/CustomEventDispatcher":2,"./serverConfig":11}],10:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2,"./serverConfig":14}],13:[function(require,module,exports){
 /**
  * Created by jerek0 on 14/02/2015.
  */
@@ -539,25 +754,37 @@ ServerGameUpdater.prototype.bindServerEvents = function () {
         scope.gameController.updateBall(data);
     });
 
+    this.socket.on('addPlayer', function(data) {
+        scope.gameController.addPlayer(data, false);
+    });
+
     this.socket.on('updatePlayer', function(data) {
         scope.gameController.updatePlayer(data);
     });
 };
 
 ServerGameUpdater.prototype.addBall= function(data) {
-    this.socket.emit('addBall', data);
+    data.event = 'addBall';
+    this.socket.emit(data.event, data);
 };
 
 ServerGameUpdater.prototype.updateBall= function(data) {
-    this.socket.emit('updateBall', data);
+    data.event = 'updateBall';
+    this.socket.emit(data.event, data);
+};
+
+ServerGameUpdater.prototype.addPlayer = function(data) {
+    data.event = 'addPlayer';
+    this.socket.emit(data.event, data);
 };
 
 ServerGameUpdater.prototype.updatePlayer = function(data) {
-    this.socket.emit('updatePlayer', data);
+    data.event = 'updatePlayer';
+    this.socket.emit(data.event, data);
 };
 
 module.exports = ServerGameUpdater;
-},{"../events/CustomEventDispatcher":2}],11:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],14:[function(require,module,exports){
 /**
  * Created by jerek0 on 10/02/2015.
  */
@@ -568,7 +795,7 @@ var serverConfig = {
 }
 
 module.exports = serverConfig;
-},{}],12:[function(require,module,exports){
+},{}],15:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -634,7 +861,7 @@ ChooseCharacter.prototype.chooseCharacter = function(e) {
 
 module.exports = ChooseCharacter;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":16}],13:[function(require,module,exports){
+},{"./Page":19}],16:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 13/02/2015.
@@ -692,7 +919,7 @@ GamePage.prototype.onOtherPlayerReady = function() {
  */
 GamePage.prototype.launchGame = function () {
     global.serverDialer.removeEventListener('launchGame', this.launchGameHandler);
-    document.getElementById("message").innerHTML = "GO !";
+    document.getElementById("message").innerHTML = "";
     
     global.gameEngine.rendererController.setState('game');
 };
@@ -708,7 +935,7 @@ GamePage.prototype.unbindUiActions = function() {
 module.exports = GamePage;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":16}],14:[function(require,module,exports){
+},{"./Page":19}],17:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -740,7 +967,7 @@ HomePage.prototype.onPageDisplayed = function() {
 };
 
 module.exports = HomePage;
-},{"./Page":16}],15:[function(require,module,exports){
+},{"./Page":19}],18:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 09/02/2015.
@@ -875,7 +1102,7 @@ MatchmakingPage.prototype.hostRoom = function() {
 
 module.exports = MatchmakingPage;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":16}],16:[function(require,module,exports){
+},{"./Page":19}],19:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -925,7 +1152,7 @@ Page.prototype.unbindUiActions = function() {
 };
 
 module.exports = Page;
-},{"../events/CustomEventDispatcher":2}],17:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],20:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -1002,7 +1229,7 @@ PageManager.prototype.updateView = function(template) {
 
 module.exports = PageManager;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ChooseCharacterPage":12,"./GamePage":13,"./HomePage":14,"./MatchmakingPage":15,"./TechnoPage":18}],18:[function(require,module,exports){
+},{"./ChooseCharacterPage":15,"./GamePage":16,"./HomePage":17,"./MatchmakingPage":18,"./TechnoPage":21}],21:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -1064,4 +1291,4 @@ TechnoPage.prototype.chooseTechno = function() {
 };
 
 module.exports = TechnoPage;
-},{"./Page":16}]},{},[1]);
+},{"./Page":19}]},{},[1]);

@@ -6,6 +6,7 @@ var Scene = require('./zones/Scene');
 var Ball = require('./entities/Ball');
 var Racket = require('./entities/Racket');
 var KeysManager = require('./controls/KeysManager');
+var GyroManager = require('./controls/GyroManager');
 var ServerGameUpdater = require('../network/ServerGameUpdater');
 
 var GameController = function () {
@@ -54,12 +55,12 @@ GameController.prototype.initHost = function () {
         y: this.scene.baseHeight/2
     }, true);
     
-    this.controlsManager = new KeysManager(this.players[this.player]);
+    this.initControls();
 };
 
 GameController.prototype.initClient = function () {
     this.player = 1;
-    
+
     // PLAYER INIT
     this.addPlayer({
         id: this.player,
@@ -67,7 +68,15 @@ GameController.prototype.initClient = function () {
         y: this.scene.baseHeight / 2
     }, true);
 
-    this.controlsManager = new KeysManager(this.players[this.player]);
+    this.initControls();
+};
+
+GameController.prototype.initControls = function () {
+    if(localStorage.getItem('PH-tech') == 'gyro') {
+        this.controlsManager = new GyroManager(this.players[this.player]);
+    } else {
+        this.controlsManager = new KeysManager(this.players[this.player]);
+    }
 };
 
 GameController.prototype.update = function () {
