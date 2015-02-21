@@ -51,7 +51,8 @@ Ball.prototype.checkPlayersCollisions = function (player) {
          player.position.y > (hitBox.y + hitBox.height)   ||
         (player.position.y + player.height) < hitBox.y))
     {
-        // SECURITE POUR NE PAS COLLISIONNER EN BOUCLE (oui j'aime le français)
+        // TODO - Watch memory on collisions
+        // TODO - Debuguer la sécurité pour pas collisioner en boucle qui ne marche pas
         if(this.colliding == false) {
             // CAS 1 - Rebond sur X uniquement
             if(hitBox.y + hitBox.height > player.position.y && (hitBox.y + hitBox.height) < (player.position.y + player.height) )
@@ -102,7 +103,6 @@ Ball.prototype.checkPlayersCollisions = function (player) {
 
             // Le déplacement du joueur influera forcément sur la puissance du rebond, verticalement parlant
             this.position.deltaY += player.position.deltaY/4;
-
             this.colliding = true;
         }
     } else {
@@ -112,14 +112,14 @@ Ball.prototype.checkPlayersCollisions = function (player) {
 }
 
 Ball.prototype.checkBoundariesCollisions = function (Rectangle) {
-    if(this.position.x > Rectangle.width || this.position.x < 0) {
+    if(this.position.x + this.width > Rectangle.width || this.position.x < 0) {
         this.position.deltaX = - this.position.deltaX;
         
         // If there is a collision, we return the player that won
-        if(this.position.x > Rectangle.width) return '0';
+        if(this.position.x + this.width > Rectangle.width) return '0';
         else return '1';
     }
-    if(this.position.y > Rectangle.height || this.position.y < 0 ) {
+    if(this.position.y + this.height> Rectangle.height || this.position.y < 0 ) {
         this.position.deltaY = - this.position.deltaY;
     }
     return false;

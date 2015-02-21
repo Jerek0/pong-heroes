@@ -308,6 +308,9 @@ GameController.prototype.onScore = function (data, sendToServer) {
     this.scoreManager.incrementScore(data.id);
     this.scores[data.id].updateValue(this.scoreManager.getScoreByPlayer(data.id));
     
+    if(data.id == this.player && this.scoreManager.getScoreByPlayer(data.id) > localStorage.getItem('PH-highscore'))
+    localStorage.setItem('PH-highscore', this.scoreManager.getScoreByPlayer(data.id));
+    
     if(sendToServer)
         this.serverGameUpdater.scored({ id: data.id});
 }
@@ -540,8 +543,8 @@ var Ball = function () {
     this.position.deltaY = 0;
 
     this.graphics = new PIXI.Sprite.fromImage('./img/ball.png');
-    this.graphics.anchor.x = 0.5;
-    this.graphics.anchor.y = 0.5;
+    //this.graphics.anchor.x = 0.5;
+    //this.graphics.anchor.y = 0.5;
     this.graphics.scale = new PIXI.Point(0.5, 0.5);
     this.addChild(this.graphics);
 };
@@ -573,7 +576,8 @@ Ball.prototype.accelerate = function() {
 };
 
 Ball.prototype.checkPlayersCollisions = function (player) {
-    var hitBox = new PIXI.Rectangle(this.position.x - this.width / 2, this.position.y - this.height / 2, this.width, this.height);
+    //var hitBox = new PIXI.Rectangle(this.position.x - this.width / 2, this.position.y - this.height / 2, this.width, this.height);
+    var hitBox = new PIXI.Rectangle(this.position.x, this.position.y, this.width, this.height);
     
     // COLLISION DETECTEE
     if(!(player.position.x > (hitBox.x + hitBox.width)    ||
@@ -581,7 +585,8 @@ Ball.prototype.checkPlayersCollisions = function (player) {
          player.position.y > (hitBox.y + hitBox.height)   ||
         (player.position.y + player.height) < hitBox.y))
     {
-        // SECURITE POUR NE PAS COLLISIONNER EN BOUCLE (oui j'aime le français)
+        // TODO - Watch memory on collisions
+        // TODO - Debuguer la sécurité pour pas collisioner en boucle qui ne marche pas
         if(this.colliding == false) {
             // CAS 1 - Rebond sur X uniquement
             if(hitBox.y + hitBox.height > player.position.y && (hitBox.y + hitBox.height) < (player.position.y + player.height) )
@@ -632,7 +637,6 @@ Ball.prototype.checkPlayersCollisions = function (player) {
 
             // Le déplacement du joueur influera forcément sur la puissance du rebond, verticalement parlant
             this.position.deltaY += player.position.deltaY/4;
-
             this.colliding = true;
         }
     } else {
@@ -642,14 +646,14 @@ Ball.prototype.checkPlayersCollisions = function (player) {
 }
 
 Ball.prototype.checkBoundariesCollisions = function (Rectangle) {
-    if(this.position.x > Rectangle.width || this.position.x < 0) {
+    if(this.position.x + this.width > Rectangle.width || this.position.x < 0) {
         this.position.deltaX = - this.position.deltaX;
         
         // If there is a collision, we return the player that won
-        if(this.position.x > Rectangle.width) return '0';
+        if(this.position.x + this.width > Rectangle.width) return '0';
         else return '1';
     }
-    if(this.position.y > Rectangle.height || this.position.y < 0 ) {
+    if(this.position.y + this.height> Rectangle.height || this.position.y < 0 ) {
         this.position.deltaY = - this.position.deltaY;
     }
     return false;
@@ -992,7 +996,7 @@ module.exports = ServerGameUpdater;
  */
 
 var serverConfig = {
-    url: "192.168.0.32",
+    url: "91.121.120.180",
     port: 9005
 }
 
@@ -1057,7 +1061,8 @@ ChooseCharacter.prototype.destroyCharacterChoosing = function() {
 };
 
 ChooseCharacter.prototype.chooseCharacter = function(e) {
-    localStorage.setItem('PH-character', e.currentTarget.dataset.character);
+    console.log(e);
+    localStorage.setItem('PH-character', e.target.dataset.character);
     this.dispatchEvent({ type: "changePage", newPage: "MatchmakingPage" });
 };
 
@@ -1096,6 +1101,9 @@ GamePage.prototype.onPageDisplayed = function() {
     btnBack.addEventListener('click', function() {
         global.serverDialer.leaveRoom();
     });
+
+    var roomNumber = document.getElementById("roomNumber");
+    roomNumber.innerHTML = global.serverDialer.gameID;
     
     this.bindServerEvents();
 };
@@ -1166,6 +1174,9 @@ HomePage.prototype.onPageDisplayed = function() {
     btnPlay.addEventListener('click', function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'TechnoPage' });
     });
+
+    var highscores = document.getElementById("highscore");
+    highscores.innerHTML = localStorage.getItem('PH-highscore') ? localStorage.getItem('PH-highscore') : 0;
 };
 
 module.exports = HomePage;
@@ -1368,7 +1379,7 @@ var GamePage = require('./GamePage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
-    this.changePage('MatchmakingPage');
+    this.changePage('HomePage');
 
     global.serverDialer.addEventListener('changePage', this.onChangePageHandler);
 };
@@ -1486,8 +1497,9 @@ TechnoPage.prototype.destroyTechnoChoosing = function() {
     }
 };
 
-TechnoPage.prototype.chooseTechno = function() {
-    localStorage.setItem('PH-tech', event.target.dataset.tech);
+TechnoPage.prototype.chooseTechno = function(e) {
+    console.log(e);
+    localStorage.setItem('PH-tech', e.target.dataset.tech);
     this.destroyTechnoChoosing();
     this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
 };

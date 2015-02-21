@@ -45,7 +45,12 @@
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/fonts/slash-webfont.woff2 \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/img/background.png \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/img/ball.png \
+/Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/img/gyro.png \
+/Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/img/hero1.png \
+/Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/img/hero2.png \
+/Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/img/keys.png \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/img/logo.png \
+/Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/img/remote.png \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/app.js \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/bundle.js \
 /Applications/MAMP/htdocs/GOBELINS/pong-pixi-js/app/platforms/android/assets/www/js/events \

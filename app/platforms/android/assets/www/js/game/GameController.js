@@ -221,6 +221,9 @@ GameController.prototype.onScore = function (data, sendToServer) {
     this.scoreManager.incrementScore(data.id);
     this.scores[data.id].updateValue(this.scoreManager.getScoreByPlayer(data.id));
     
+    if(data.id == this.player && this.scoreManager.getScoreByPlayer(data.id) > localStorage.getItem('PH-highscore'))
+    localStorage.setItem('PH-highscore', this.scoreManager.getScoreByPlayer(data.id));
+    
     if(sendToServer)
         this.serverGameUpdater.scored({ id: data.id});
 }

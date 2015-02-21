@@ -7,6 +7,8 @@ var Ball = function () {
     
     this.position.deltaX = 0;
     this.position.deltaY = 0;
+    
+    this.colliding = [];
 
     this.graphics = new PIXI.Sprite.fromImage('./img/ball.png');
     //this.graphics.anchor.x = 0.5;
@@ -41,7 +43,7 @@ Ball.prototype.accelerate = function() {
     this.position.deltaY *= 1.0005;
 };
 
-Ball.prototype.checkPlayersCollisions = function (player) {
+Ball.prototype.checkPlayersCollisions = function (player, index) {
     //var hitBox = new PIXI.Rectangle(this.position.x - this.width / 2, this.position.y - this.height / 2, this.width, this.height);
     var hitBox = new PIXI.Rectangle(this.position.x, this.position.y, this.width, this.height);
     
@@ -53,7 +55,7 @@ Ball.prototype.checkPlayersCollisions = function (player) {
     {
         // TODO - Watch memory on collisions
         // TODO - Debuguer la sécurité pour pas collisioner en boucle qui ne marche pas
-        if(this.colliding == false) {
+        if(this.colliding[index] == false) {
             // CAS 1 - Rebond sur X uniquement
             if(hitBox.y + hitBox.height > player.position.y && (hitBox.y + hitBox.height) < (player.position.y + player.height) )
             {
@@ -103,11 +105,11 @@ Ball.prototype.checkPlayersCollisions = function (player) {
 
             // Le déplacement du joueur influera forcément sur la puissance du rebond, verticalement parlant
             this.position.deltaY += player.position.deltaY/4;
-            this.colliding = true;
+            this.colliding[index] = true;
         }
     } else {
-        if(this.colliding) console.log('no collision anymore');
-        this.colliding = false;
+        if(this.colliding[index]) console.log('no collision anymore');
+        this.colliding[index] = false;
     }
 }
 

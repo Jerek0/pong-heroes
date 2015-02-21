@@ -14,7 +14,7 @@ var Racket = function (position) {
     
     this.graphics = new PIXI.Graphics();
     this.graphics.beginFill(0x4A3637);
-    this.graphics.drawRect(0,0,20,80);
+    this.graphics.drawRect(0,0,40,160);
     this.addChild(this.graphics);
     
 };

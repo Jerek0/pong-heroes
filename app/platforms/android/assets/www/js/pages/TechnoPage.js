@@ -52,8 +52,9 @@ TechnoPage.prototype.destroyTechnoChoosing = function() {
     }
 };
 
-TechnoPage.prototype.chooseTechno = function() {
-    localStorage.setItem('PH-tech', event.target.dataset.tech);
+TechnoPage.prototype.chooseTechno = function(e) {
+    console.log(e);
+    localStorage.setItem('PH-tech', e.target.dataset.tech);
     this.destroyTechnoChoosing();
     this.dispatchEvent({ type: 'changePage', newPage: 'ChooseCharacterPage' });
 };

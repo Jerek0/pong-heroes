@@ -73,7 +73,7 @@ GameController.prototype.initClient = function () {
     // PLAYER INIT
     this.addPlayer({
         id: this.player,
-        x: this.scene.baseWidth - 40,
+        x: this.scene.baseWidth - 60,
         y: this.scene.baseHeight / 2
     }, true);
 
@@ -103,7 +103,7 @@ GameController.prototype.update = function () {
         // Collisions
         if(this.role == "host"){
             for(j=0;j<numberOfPlayers;j++) {
-                this.balls[i].checkPlayersCollisions(this.players[j]);
+                this.balls[i].checkPlayersCollisions(this.players[j], j);
             }
             
             collision = this.balls[i].checkBoundariesCollisions(this.boundaries);

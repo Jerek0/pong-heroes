@@ -29,6 +29,9 @@ GamePage.prototype.onPageDisplayed = function() {
     btnBack.addEventListener('click', function() {
         global.serverDialer.leaveRoom();
     });
+
+    var roomNumber = document.getElementById("roomNumber");
+    roomNumber.innerHTML = global.serverDialer.gameID;
     
     this.bindServerEvents();
 };

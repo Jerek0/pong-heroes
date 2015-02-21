@@ -92,6 +92,41 @@ body.desktop .mobile {
     display: block;
 }
 
+#btn-back {
+    display: block;
+    margin-bottom: 1em;
+}
+
+.techno-chooser img {
+    max-width: 50%;
+    margin-bottom: 1em;
+}
+
+.character img {
+    max-height: 20vh;
+}
+
+ul {
+    padding-left: 0;
+}
+
+li {
+    list-style-type: none;
+}
+
+#rooms-list {
+    max-height: 50vh;
+    overflow: scroll;
+}
+
+#rooms-list li {
+    background-color: rgba(255,255,255,.8);
+    border-radius: 3px;
+    padding: 10px 0px;
+    box-shadow: 0.1em 0.1em 0 rgba(0,0,0,.2);
+    margin-bottom: 5px;
+}
+
 /* UTIL */
 
 .col50 {
@@ -124,9 +159,20 @@ body.desktop .mobile {
     width: 100%;
 }
 
+.fullheight {
+    height: 100%;
+}
+
 .topleft {
     position: absolute;
     top: 10px;
+    left: 10px;
+    z-index: 1;
+}
+
+.bottomleft {
+    position: absolute;
+    bottom: 10px;
     left: 10px;
     z-index: 1;
 }
@@ -163,6 +209,10 @@ body.desktop .mobile {
 
 .disabled {
     opacity: .5;
+}
+
+.inverted {
+    color: white;
 }
 
 /* ##### ANIMATIONS ##### */
