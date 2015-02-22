@@ -2,12 +2,19 @@
  * Created by jerek0 on 12/02/2015.
  */
 var PlayerDialer = require('./PlayerDialer');
-    
-// Une instance par paire desktop / mobile
+
+/**
+ * Reroutage des requetes inGame
+ * Une instance par paire desktop / mobile
+ */
 var GameController = function(io) {
     this.io = io;
 }
 
+/**
+ * We initialize the GameController with it's gameID and empty client and host *
+ * @param gameID
+ */
 GameController.prototype.init = function(gameID) {
     this.gameID = gameID;
 
@@ -21,6 +28,11 @@ GameController.prototype.init = function(gameID) {
     };
 };
 
+/**
+ * Method allowing to assign a socket and a character ID to the host *
+ * @param socket
+ * @param character
+ */
 GameController.prototype.setHost = function(socket, character) {
     this.host = {
         socket: socket,
@@ -28,6 +40,13 @@ GameController.prototype.setHost = function(socket, character) {
     };
 };
 
+/**
+ * Method allowing to assign a socket and a characater ID to the client *
+ * Also allows to notify the client that he's connected and every others aswell *
+ * @param socket
+ * @param character
+ * @returns {boolean}
+ */
 GameController.prototype.setClient = function(socket, character) {
     if(!this.client.socket) {
         this.client = {
@@ -48,6 +67,9 @@ GameController.prototype.setClient = function(socket, character) {
     }
 };
 
+/**
+ * Method allowing to launch the game after a small delay of 1sec *
+ */
 GameController.prototype.launchGame = function () {
     var scope = this;
     
@@ -57,6 +79,10 @@ GameController.prototype.launchGame = function () {
     }, 1000);
 };
 
+/**
+ * Here, we receive all the current game requests, coming from the host and from the client *
+ * We get the datas and transmit them from host to client and from client to host *
+ */
 GameController.prototype.bindRequests = function() {
     var scope = this;
     
@@ -89,6 +115,10 @@ GameController.prototype.bindRequests = function() {
     this.client.socket.on('updateBall', this.transmitMessageHostHandler);
 };
 
+/**
+ * The method bindRequests above implies that we remove every existing socket listener *
+ * This allows to prevent some sockets duplications issues *
+ */
 GameController.prototype.unbindRequests = function() {
     if(this.transmitMessageClientHandler && this.transmitMessageHostHandler) {
         this.host.socket.removeListener('addBall', this.transmitMessageClientHandler);
@@ -105,10 +135,16 @@ GameController.prototype.unbindRequests = function() {
     }
 };
 
+/**
+ * This method notifies everyone in the game that they're out * 
+ */
 GameController.prototype.expulse = function() {
     this.io.sockets.in(this.gameID).emit('expulsed');
 };
 
+/**
+ * Method called when the server decides to stop this game * 
+ */
 GameController.prototype.close = function() {
     this.expulse();
     this.unbindRequests();
@@ -116,10 +152,18 @@ GameController.prototype.close = function() {
     this.host.socket = null;
 }
 
+/**
+ * Returns this game's host * 
+ * @returns {null}
+ */
 GameController.prototype.getHost = function() {
     return this.host.socket;
 };
 
+/**
+ * Returns this game's client *
+ * @returns {null}
+ */
 GameController.prototype.getClient = function() {
     return this.client.socket;
 };
