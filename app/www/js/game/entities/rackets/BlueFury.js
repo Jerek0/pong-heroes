@@ -7,7 +7,7 @@
  */
 var Racket = require('./Racket');
 
-var RedFury = function(position) {
+var BlueFury = function(position) {
     Racket.call(this, position);
 
     this.acceleration = 1;
@@ -21,7 +21,11 @@ var RedFury = function(position) {
     this.faceTheRightWay();
     this.addChild(this.graphics);
 };
-RedFury.prototype = Object.create(Racket.prototype);
-RedFury.prototype.constructor = RedFury;
+BlueFury.prototype = Object.create(Racket.prototype);
+BlueFury.prototype.constructor = BlueFury;
 
-module.exports = RedFury;
+BlueFury.prototype.firstPower = function () {
+    this.dispatchEvent('reverseBallsAngles');
+};
+
+module.exports = BlueFury;

@@ -19,4 +19,9 @@ var RedFury = function(position) {
 RedFury.prototype = Object.create(Racket.prototype);
 RedFury.prototype.constructor = RedFury;
 
+RedFury.prototype.firstPower = function () {
+    this.dispatchEvent('duplicateBall');
+};
+
+
 module.exports = RedFury;

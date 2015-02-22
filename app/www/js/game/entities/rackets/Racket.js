@@ -4,6 +4,7 @@
 
 var Racket = function (position) {
     PIXI.DisplayObjectContainer.call( this );
+    PIXI.EventTarget.call(this);
     
     this.position.x = position.x;
     this.position.y = position.y;
@@ -52,6 +53,14 @@ Racket.prototype.faceTheRightWay = function () {
         this.graphics.anchor.x = 1;
     }
     this.graphics.rotation = Math.PI * ((this.position.x > 640 ? -1 : 1) * 90) / 180;
+};
+
+Racket.prototype.firstPower = function () {
+    console.log('firstPower');
+};
+
+Racket.prototype.secondPower = function () {
+    console.log('secondPower');
 };
 
 module.exports = Racket;

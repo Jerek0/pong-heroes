@@ -110,6 +110,11 @@ var GameController = function () {
     window.onresize = this.onResize.bind(this);
     this.boundaries = new PIXI.Rectangle(0,0,1280,1024); // Frame collisions
 
+    var background = new PIXI.Sprite.fromImage('img/background.png');
+    background.width = window.innerWidth;
+    background.height = window.innerHeight;
+    this.stage.addChild(background);
+
     // ENTITIES
     this.balls = [];
     this.players = [];
@@ -126,11 +131,6 @@ var GameController = function () {
         this.initClient();
     }
     this.lastUpdate = Date.now();
-
-    var background = new PIXI.Sprite.fromImage('img/background.png');
-    background.width = window.innerWidth;
-    background.height = window.innerHeight;
-    this.stage.addChild(background);
 };
 GameController.prototype = new StateController();
 GameController.prototype.constructor = GameController;
@@ -223,6 +223,7 @@ GameController.prototype.update = function () {
         }
     };
     
+    // NETWORK UPDATES EVERY 1/25s
     if((Date.now() - this.lastUpdate) > (1000/25) ) {
         this.lastUpdate = Date.now();
         
@@ -265,7 +266,7 @@ GameController.prototype.addBall = function (data, sendToServer) {
 
     if(sendToServer){
         this.serverGameUpdater.addBall(data);
-        this.balls[this.balls.length-1].launch();
+        this.balls[this.balls.length-1].launch(data.deltaX, data.deltaY);
     }
 };
 
@@ -303,6 +304,7 @@ GameController.prototype.addPlayer = function (data, sendToServer) {
     
     this.players[data.id] = player;
     this.scene.addChild(this.players[data.id]);
+    this.listenForPlayerPowers(data.id);
     
     // Add it's scores
     this.scoreManager.addPlayer(data.id);
@@ -317,10 +319,37 @@ GameController.prototype.addPlayer = function (data, sendToServer) {
         this.serverGameUpdater.addPlayer(data);
 };
 
+GameController.prototype.listenForPlayerPowers = function (index) {
+    this.players[index].addEventListener('duplicateBall', this.addBallFromPlayer.bind(this, index));
+    this.players[index].addEventListener('reverseBallsAngles', this.reverseBallsAngles.bind(this));
+};
+
+GameController.prototype.addBallFromPlayer = function(index) {
+    this.addBall({
+        x: this.players[index].position.x + this.players[index].width,
+        y: this.players[index].position.y + (this.players[index].height / 2),
+        deltaX: (this.players[index].position.x < 640 ? 5 : -5)
+    }, true);
+};
+
+GameController.prototype.reverseBallsAngles = function () {
+    var i, numberOfBalls = this.balls.length;
+    
+    for(i = 0; i < numberOfBalls; i++) {
+        this.serverGameUpdater.updateBall({
+            index: i,
+            deltaX: this.balls[i].position.deltaX,
+            deltaY: this.balls[i].position.deltaY * (-1),
+            x: this.balls[i].x,
+            y: this.balls[i].y
+        });
+    }
+};
+
 GameController.prototype.updatePlayer = function(data) {
     this.players[data.index].y = data.y;
     this.players[data.index].position.deltaY = data.deltaY;
-}
+};
 
 GameController.prototype.onScore = function (data, sendToServer) {
     this.scoreManager.incrementScore(data.id);
@@ -514,12 +543,13 @@ var KeysManager = function(racket) {
     
     window.addEventListener('keydown', this.bindKeyDown.bind(this), false);
     window.addEventListener('keyup', this.bindKeyUp.bind(this), false);
-    
+
     requestAnimationFrame(this.update.bind(this));
 };
 
 KeysManager.prototype.bindKeyDown = function (e) {
     var key = e.keyCode ? e.keyCode : e.which;
+    console.log(key);
     
     switch (key) {
         case 40:
@@ -527,6 +557,16 @@ KeysManager.prototype.bindKeyDown = function (e) {
             break;
         case 38:
             this.keyMap.up = true;
+            break;
+
+        case 65: // A
+        case 81: // Q
+            this.keyMap.firstPower = true;
+            break;
+
+        case 90: // Z
+        case 87: // W
+            this.keyMap.secondPower = true;
             break;
     }
 };
@@ -537,15 +577,35 @@ KeysManager.prototype.bindKeyUp = function(e) {
     switch (key) {
         case 40:
             this.keyMap.down = false;
+            break;
         case 38: 
             this.keyMap.up = false;
+            break;
+            
+        case 65:
+        case 81:
+        case 90:
+        case 87:
+            this.launchingPower = false;
+            break;
     }
     
-}
+};
 
 KeysManager.prototype.update = function () {
     if(this.keyMap.up) this.racket.position.deltaY += -this.racket.acceleration;
     if(this.keyMap.down) this.racket.position.deltaY += this.racket.acceleration;
+    
+    if(this.keyMap.firstPower && !this.launchingPower) {
+        this.racket.firstPower();
+        this.keyMap.firstPower = false;
+        this.launchingPower = true;
+    }
+    if(this.keyMap.secondPower && !this.launchingPower) {
+        this.racket.secondPower();
+        this.keyMap.secondPower = false;
+        this.launchingPower = true;
+    }
     
     requestAnimationFrame(this.update.bind(this));
 };
@@ -715,7 +775,7 @@ module.exports = Score;
  */
 var Racket = require('./Racket');
 
-var RedFury = function(position) {
+var BlueFury = function(position) {
     Racket.call(this, position);
 
     this.acceleration = 1;
@@ -729,10 +789,14 @@ var RedFury = function(position) {
     this.faceTheRightWay();
     this.addChild(this.graphics);
 };
-RedFury.prototype = Object.create(Racket.prototype);
-RedFury.prototype.constructor = RedFury;
+BlueFury.prototype = Object.create(Racket.prototype);
+BlueFury.prototype.constructor = BlueFury;
 
-module.exports = RedFury;
+BlueFury.prototype.firstPower = function () {
+    this.dispatchEvent('reverseBallsAngles');
+};
+
+module.exports = BlueFury;
 },{"./Racket":12}],12:[function(require,module,exports){
 /**
  * Created by jerek0 on 15/02/2015.
@@ -740,6 +804,7 @@ module.exports = RedFury;
 
 var Racket = function (position) {
     PIXI.DisplayObjectContainer.call( this );
+    PIXI.EventTarget.call(this);
     
     this.position.x = position.x;
     this.position.y = position.y;
@@ -790,6 +855,14 @@ Racket.prototype.faceTheRightWay = function () {
     this.graphics.rotation = Math.PI * ((this.position.x > 640 ? -1 : 1) * 90) / 180;
 };
 
+Racket.prototype.firstPower = function () {
+    console.log('firstPower');
+};
+
+Racket.prototype.secondPower = function () {
+    console.log('secondPower');
+};
+
 module.exports = Racket;
 },{}],13:[function(require,module,exports){
 /**
@@ -812,6 +885,11 @@ var RedFury = function(position) {
 };
 RedFury.prototype = Object.create(Racket.prototype);
 RedFury.prototype.constructor = RedFury;
+
+RedFury.prototype.firstPower = function () {
+    this.dispatchEvent('duplicateBall');
+};
+
 
 module.exports = RedFury;
 },{"./Racket":12}],14:[function(require,module,exports){
