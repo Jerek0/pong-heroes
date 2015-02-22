@@ -612,6 +612,8 @@ var KeysManager = function(racket) {
 KeysManager.prototype.bindKeyDown = function (e) {
     var key = e.keyCode ? e.keyCode : e.which;
     
+    console.log(key);
+    
     switch (key) {
         case 40:
             this.keyMap.down = true;
@@ -620,8 +622,7 @@ KeysManager.prototype.bindKeyDown = function (e) {
             this.keyMap.up = true;
             break;
 
-        case 65: // A
-        case 81: // Q
+        case 32: // SPACE BAR
             this.keyMap.firstPower = true;
             break;
     }
@@ -638,8 +639,7 @@ KeysManager.prototype.bindKeyUp = function(e) {
             this.keyMap.up = false;
             break;
             
-        case 65:
-        case 81:
+        case 32: // SPACE BAR
             this.launchingPower = false;
             break;
     }
@@ -1108,6 +1108,9 @@ ServerDialer.prototype.bindServerEvents = function() {
     this.socket.on('launchGame', function() {
         scope.dispatchEvent({ type: 'launchGame' });
     });
+    this.socket.on('roomFull', function() {
+        alert('This room is full, please try another one or host you own !');
+    });
 };
 
 /**
@@ -1380,6 +1383,9 @@ GamePage.prototype.onPageDisplayed = function() {
     btnBack.addEventListener('click', function() {
         global.serverDialer.leaveRoom();
     });
+    
+    var controls = document.getElementById("controls");
+    controls.innerHTML = '<img src="img/'+localStorage.getItem('PH-tech')+'Controls.png" />';
 
     var roomNumber = document.getElementById("roomNumber");
     roomNumber.innerHTML = global.serverDialer.gameID;
@@ -1408,6 +1414,7 @@ GamePage.prototype.onOtherPlayerReady = function() {
  */
 GamePage.prototype.launchGame = function () {
     global.serverDialer.removeEventListener('launchGame', this.launchGameHandler);
+    document.getElementById("controls").innerHTML = "";
     document.getElementById("message").innerHTML = "";
     
     global.gameEngine.rendererController.setState('game');

@@ -29,6 +29,9 @@ GamePage.prototype.onPageDisplayed = function() {
     btnBack.addEventListener('click', function() {
         global.serverDialer.leaveRoom();
     });
+    
+    var controls = document.getElementById("controls");
+    controls.innerHTML = '<img src="img/'+localStorage.getItem('PH-tech')+'Controls.png" />';
 
     var roomNumber = document.getElementById("roomNumber");
     roomNumber.innerHTML = global.serverDialer.gameID;
@@ -57,6 +60,7 @@ GamePage.prototype.onOtherPlayerReady = function() {
  */
 GamePage.prototype.launchGame = function () {
     global.serverDialer.removeEventListener('launchGame', this.launchGameHandler);
+    document.getElementById("controls").innerHTML = "";
     document.getElementById("message").innerHTML = "";
     
     global.gameEngine.rendererController.setState('game');

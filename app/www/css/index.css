@@ -147,6 +147,10 @@ li {
     height: 90%;
 }
 
+img {
+    max-width: 100%;
+}
+
 .bigheight {
     height: 90vh;
 }

@@ -162,6 +162,7 @@ var ServerManager = {
             if(this.gameControllers[socket.gameID].setClient(socket, data.character)) {
                 this.log('Join attempt on game '+data.gameID+' is a success - Character : '+data.character);
             } else {
+                socket.emit('roomFull');
                 socket.leave(socket.gameID);
                 this.log('Join attempt on game '+data.gameID+' is a fail - Client already set');
             }

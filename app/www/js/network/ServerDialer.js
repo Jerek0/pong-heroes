@@ -67,6 +67,9 @@ ServerDialer.prototype.bindServerEvents = function() {
     this.socket.on('launchGame', function() {
         scope.dispatchEvent({ type: 'launchGame' });
     });
+    this.socket.on('roomFull', function() {
+        alert('This room is full, please try another one or host you own !');
+    });
 };
 
 /**
