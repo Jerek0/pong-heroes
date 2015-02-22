@@ -9,4 +9,8 @@ StateController.prototype.update = function() {
     //console.log('updating');
 };
 
+StateController.prototype.onDestroy = function () {
+
+};
+
 module.exports = StateController;

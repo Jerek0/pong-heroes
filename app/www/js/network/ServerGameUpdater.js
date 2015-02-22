@@ -15,30 +15,46 @@ ServerGameUpdater.prototype.constructor = ServerGameUpdater;
 
 ServerGameUpdater.prototype.bindServerEvents = function () {
     var scope = this;
-
-    this.socket.on('addBall', function(data) {
+    
+    this.addBallHandler = function(data) {
         scope.gameController.addBall(data);
-    });
-
-    this.socket.on('updateBall', function(data) {
+    };
+    
+    this.updateBallHandler = function(data) {
         scope.gameController.updateBall(data);
-    });
+    };
 
-    this.socket.on('addPlayer', function(data) {
+    this.addPlayerHandler = function(data) {
         scope.gameController.addPlayer(data, false);
-    });
-
-    this.socket.on('removeBall', function(data) {
+    };
+    
+    this.removeBallHandler = function(data) {
         scope.gameController.removeBall(data, false);
-    });
-
-    this.socket.on('updatePlayer', function(data) {
+    };
+    
+    this.updatePlayerHandler = function(data) {
         scope.gameController.updatePlayer(data);
-    });
-
-    this.socket.on('scored', function(data) {
+    };
+    
+    this.scoredHandler = function(data) {
         scope.gameController.onScore(data, false);
-    });
+    };
+
+    this.socket.on('addBall', this.addBallHandler);
+    this.socket.on('updateBall', this.updateBallHandler);
+    this.socket.on('addPlayer', this.addPlayerHandler);
+    this.socket.on('removeBall', this.removeBallHandler);
+    this.socket.on('updatePlayer', this.updatePlayerHandler);
+    this.socket.on('scored', this.scoredHandler);
+};
+
+ServerGameUpdater.prototype.unbindServerEvents = function () {
+    this.socket.removeListener('addBall', this.addBallHandler);
+    this.socket.removeListener('updateBall', this.updateBallHandler);
+    this.socket.removeListener('addPlayer', this.addPlayerHandler);
+    this.socket.removeListener('removeBall', this.removeBallHandler);
+    this.socket.removeListener('updatePlayer', this.updatePlayerHandler);
+    this.socket.removeListener('scored', this.scoredHandler);
 };
 
 ServerGameUpdater.prototype.addBall= function(data) {

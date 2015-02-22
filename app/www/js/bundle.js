@@ -263,10 +263,15 @@ GameController.prototype.addBall = function (data, sendToServer) {
     ball.reset(new PIXI.Point(data.x, data.y));
     this.balls.push(ball);
     this.scene.addChild(this.balls[this.balls.length-1]);
+    this.balls[this.balls.length-1].launch(data.deltaX, data.deltaY);
 
     if(sendToServer){
-        this.serverGameUpdater.addBall(data);
-        this.balls[this.balls.length-1].launch(data.deltaX, data.deltaY);
+        this.serverGameUpdater.addBall({
+            x: this.balls[this.balls.length-1].position.x,
+            y: this.balls[this.balls.length-1].position.y,
+            deltaX: this.balls[this.balls.length-1].position.deltaX,
+            deltaY: this.balls[this.balls.length-1].position.deltaY
+        });
     }
 };
 
@@ -282,7 +287,10 @@ GameController.prototype.updateBall = function (data) {
     this.balls[data.index].x = data.x;
     this.balls[data.index].y = data.y;
     this.balls[data.index].position.deltaX = data.deltaX;
+    console.log('updating ball '+data.index+ ' with value '+data.deltaY);
+    console.log(this.balls[data.index].position.deltaY);
     this.balls[data.index].position.deltaY = data.deltaY;
+    console.log(this.balls[data.index].position.deltaY);
 };
 
 GameController.prototype.addPlayer = function (data, sendToServer) {
@@ -324,9 +332,16 @@ GameController.prototype.listenForPlayerPowers = function (index) {
     this.players[index].addEventListener('reverseBallsAngles', this.reverseBallsAngles.bind(this));
 };
 
+GameController.prototype.destroyPlayersListeners = function () {
+    for(var i = 0; i < this.players.length; i++) {
+        this.players[i].removeAllListeners('duplicateBall');
+        this.players[i].removeAllListeners('reverseBallsAngles');
+    }  
+};
+
 GameController.prototype.addBallFromPlayer = function(index) {
     this.addBall({
-        x: this.players[index].position.x + this.players[index].width,
+        x: (this.players[index].position.x < 640) ? this.players[index].position.x + this.players[index].width : this.players[index].position.x,
         y: this.players[index].position.y + (this.players[index].height / 2),
         deltaX: (this.players[index].position.x < 640 ? 5 : -5)
     }, true);
@@ -336,10 +351,12 @@ GameController.prototype.reverseBallsAngles = function () {
     var i, numberOfBalls = this.balls.length;
     
     for(i = 0; i < numberOfBalls; i++) {
+        this.balls[i].position.deltaY *= -1;
+        
         this.serverGameUpdater.updateBall({
             index: i,
             deltaX: this.balls[i].position.deltaX,
-            deltaY: this.balls[i].position.deltaY * (-1),
+            deltaY: this.balls[i].position.deltaY,
             x: this.balls[i].x,
             y: this.balls[i].y
         });
@@ -360,7 +377,13 @@ GameController.prototype.onScore = function (data, sendToServer) {
     
     if(sendToServer)
         this.serverGameUpdater.scored({ id: data.id});
-}
+};
+
+GameController.prototype.onDestroy = function () {
+    this.controlsManager.onDestroy();
+    this.destroyPlayersListeners();
+    this.serverGameUpdater.unbindServerEvents();
+};
 
 GameController.prototype.onResize = function () {
     var newWidth = window.innerWidth;
@@ -459,6 +482,8 @@ var RendererController = function (wrapperId) {
 };
 
 RendererController.prototype.setState = function(state) {
+    if(this.state) this.state.onDestroy();
+
     switch (state) {
         case 'game':
             this.state = new GameController();
@@ -493,6 +518,10 @@ StateController.prototype.update = function() {
     //console.log('updating');
 };
 
+StateController.prototype.onDestroy = function () {
+
+};
+
 module.exports = StateController;
 },{}],7:[function(require,module,exports){
 /**
@@ -501,17 +530,22 @@ module.exports = StateController;
 
 var GyroManager = function(racket) {
     this.racket = racket;
+
+    this.lastPowerLaunch = Date.now();
     
-    window.addEventListener("deviceorientation", this.bindOrientation.bind(this), false);
+    // HANDLERS 
+    this.bindOrientationHandler = this.bindOrientation.bind(this);
+    this.bindMotionHandler = this.bindMotion.bind(this);
     
-    requestAnimationFrame(this.update.bind(this));
+    window.addEventListener("deviceorientation", this.bindOrientationHandler);
+    window.addEventListener("devicemotion", this.bindMotionHandler);
+
+        requestAnimationFrame(this.update.bind(this));
 };
 
 GyroManager.prototype.bindOrientation = function (e) {
-    //var alpha = e.alpha;
-    //var beta = e.beta;
-    var gamma = e.gamma + 20; // -20 allows to play a little bended
-    if(gamma < 2 && gamma > -2) gamma = 0;
+    var gamma = e.gamma + 20; // -20 allows to play a little bended towards the player
+    //if(gamma < 2 && gamma > -2) gamma = 0;
     var percentage = 1 * gamma / -20;
     
     if(percentage > 1) percentage = 1;
@@ -522,9 +556,21 @@ GyroManager.prototype.bindOrientation = function (e) {
     this.racket.position.deltaY += this.racket.acceleration * 4 * percentage;
 };
 
+GyroManager.prototype.bindMotion = function (e) {
+    if(((Date.now() - this.lastPowerLaunch) > 3000) && (e.acceleration.z > 5 || e.acceleration.z < -5)) {
+        this.racket.firstPower();
+        this.lastPowerLaunch = Date.now();
+    }
+};
+
 GyroManager.prototype.update = function () {
 
     requestAnimationFrame(this.update.bind(this));
+};
+
+GyroManager.prototype.onDestroy = function () {
+    window.removeEventListener("deviceorientation", this.bindOrientationHandler);
+    window.removeEventListener("devicemotion", this.bindMotionHandler);
 };
 
 module.exports = GyroManager;
@@ -539,17 +585,22 @@ var KeysManager = function(racket) {
     this.keyMap = {
         up: false,
         down: false
-    }
+    };
+
+    this.lastPowerLaunch = Date.now();
     
-    window.addEventListener('keydown', this.bindKeyDown.bind(this), false);
-    window.addEventListener('keyup', this.bindKeyUp.bind(this), false);
+    // HANDLERS
+    this.bindKeyDownHandler = this.bindKeyDown.bind(this);
+    this.bindKeyUpHandler = this.bindKeyUp.bind(this);
+    
+    window.addEventListener('keydown', this.bindKeyDownHandler);
+    window.addEventListener('keyup', this.bindKeyUpHandler);
 
     requestAnimationFrame(this.update.bind(this));
 };
 
 KeysManager.prototype.bindKeyDown = function (e) {
     var key = e.keyCode ? e.keyCode : e.which;
-    console.log(key);
     
     switch (key) {
         case 40:
@@ -562,11 +613,6 @@ KeysManager.prototype.bindKeyDown = function (e) {
         case 65: // A
         case 81: // Q
             this.keyMap.firstPower = true;
-            break;
-
-        case 90: // Z
-        case 87: // W
-            this.keyMap.secondPower = true;
             break;
     }
 };
@@ -584,8 +630,6 @@ KeysManager.prototype.bindKeyUp = function(e) {
             
         case 65:
         case 81:
-        case 90:
-        case 87:
             this.launchingPower = false;
             break;
     }
@@ -596,18 +640,21 @@ KeysManager.prototype.update = function () {
     if(this.keyMap.up) this.racket.position.deltaY += -this.racket.acceleration;
     if(this.keyMap.down) this.racket.position.deltaY += this.racket.acceleration;
     
-    if(this.keyMap.firstPower && !this.launchingPower) {
+    if(this.keyMap.firstPower && !this.launchingPower && ((Date.now() - this.lastPowerLaunch) > 300)) {
         this.racket.firstPower();
         this.keyMap.firstPower = false;
         this.launchingPower = true;
-    }
-    if(this.keyMap.secondPower && !this.launchingPower) {
-        this.racket.secondPower();
-        this.keyMap.secondPower = false;
-        this.launchingPower = true;
+        this.lastPowerLaunch = Date.now();
+    } else {
+        this.keyMap.firstPower = false;
     }
     
     requestAnimationFrame(this.update.bind(this));
+};
+
+KeysManager.prototype.onDestroy = function () {
+    window.removeEventListener('keydown', this.bindKeyDownHandler);
+    window.removeEventListener('keyup', this.bindKeyUpHandler);
 };
 
 module.exports = KeysManager;
@@ -859,10 +906,6 @@ Racket.prototype.firstPower = function () {
     console.log('firstPower');
 };
 
-Racket.prototype.secondPower = function () {
-    console.log('secondPower');
-};
-
 module.exports = Racket;
 },{}],13:[function(require,module,exports){
 /**
@@ -887,6 +930,7 @@ RedFury.prototype = Object.create(Racket.prototype);
 RedFury.prototype.constructor = RedFury;
 
 RedFury.prototype.firstPower = function () {
+    console.log('duplicateBalls');
     this.dispatchEvent('duplicateBall');
 };
 
@@ -1093,30 +1137,46 @@ ServerGameUpdater.prototype.constructor = ServerGameUpdater;
 
 ServerGameUpdater.prototype.bindServerEvents = function () {
     var scope = this;
-
-    this.socket.on('addBall', function(data) {
+    
+    this.addBallHandler = function(data) {
         scope.gameController.addBall(data);
-    });
-
-    this.socket.on('updateBall', function(data) {
+    };
+    
+    this.updateBallHandler = function(data) {
         scope.gameController.updateBall(data);
-    });
+    };
 
-    this.socket.on('addPlayer', function(data) {
+    this.addPlayerHandler = function(data) {
         scope.gameController.addPlayer(data, false);
-    });
-
-    this.socket.on('removeBall', function(data) {
+    };
+    
+    this.removeBallHandler = function(data) {
         scope.gameController.removeBall(data, false);
-    });
-
-    this.socket.on('updatePlayer', function(data) {
+    };
+    
+    this.updatePlayerHandler = function(data) {
         scope.gameController.updatePlayer(data);
-    });
-
-    this.socket.on('scored', function(data) {
+    };
+    
+    this.scoredHandler = function(data) {
         scope.gameController.onScore(data, false);
-    });
+    };
+
+    this.socket.on('addBall', this.addBallHandler);
+    this.socket.on('updateBall', this.updateBallHandler);
+    this.socket.on('addPlayer', this.addPlayerHandler);
+    this.socket.on('removeBall', this.removeBallHandler);
+    this.socket.on('updatePlayer', this.updatePlayerHandler);
+    this.socket.on('scored', this.scoredHandler);
+};
+
+ServerGameUpdater.prototype.unbindServerEvents = function () {
+    this.socket.removeListener('addBall', this.addBallHandler);
+    this.socket.removeListener('updateBall', this.updateBallHandler);
+    this.socket.removeListener('addPlayer', this.addPlayerHandler);
+    this.socket.removeListener('removeBall', this.removeBallHandler);
+    this.socket.removeListener('updatePlayer', this.updatePlayerHandler);
+    this.socket.removeListener('scored', this.scoredHandler);
 };
 
 ServerGameUpdater.prototype.addBall= function(data) {

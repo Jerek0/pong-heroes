@@ -8,17 +8,22 @@ var KeysManager = function(racket) {
     this.keyMap = {
         up: false,
         down: false
-    }
+    };
+
+    this.lastPowerLaunch = Date.now();
     
-    window.addEventListener('keydown', this.bindKeyDown.bind(this), false);
-    window.addEventListener('keyup', this.bindKeyUp.bind(this), false);
+    // HANDLERS
+    this.bindKeyDownHandler = this.bindKeyDown.bind(this);
+    this.bindKeyUpHandler = this.bindKeyUp.bind(this);
+    
+    window.addEventListener('keydown', this.bindKeyDownHandler);
+    window.addEventListener('keyup', this.bindKeyUpHandler);
 
     requestAnimationFrame(this.update.bind(this));
 };
 
 KeysManager.prototype.bindKeyDown = function (e) {
     var key = e.keyCode ? e.keyCode : e.which;
-    console.log(key);
     
     switch (key) {
         case 40:
@@ -58,13 +63,21 @@ KeysManager.prototype.update = function () {
     if(this.keyMap.up) this.racket.position.deltaY += -this.racket.acceleration;
     if(this.keyMap.down) this.racket.position.deltaY += this.racket.acceleration;
     
-    if(this.keyMap.firstPower && !this.launchingPower) {
+    if(this.keyMap.firstPower && !this.launchingPower && ((Date.now() - this.lastPowerLaunch) > 300)) {
         this.racket.firstPower();
         this.keyMap.firstPower = false;
         this.launchingPower = true;
+        this.lastPowerLaunch = Date.now();
+    } else {
+        this.keyMap.firstPower = false;
     }
     
     requestAnimationFrame(this.update.bind(this));
+};
+
+KeysManager.prototype.onDestroy = function () {
+    window.removeEventListener('keydown', this.bindKeyDownHandler);
+    window.removeEventListener('keyup', this.bindKeyUpHandler);
 };
 
 module.exports = KeysManager;

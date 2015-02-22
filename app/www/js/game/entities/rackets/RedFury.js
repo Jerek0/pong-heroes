@@ -20,6 +20,7 @@ RedFury.prototype = Object.create(Racket.prototype);
 RedFury.prototype.constructor = RedFury;
 
 RedFury.prototype.firstPower = function () {
+    console.log('duplicateBalls');
     this.dispatchEvent('duplicateBall');
 };
 

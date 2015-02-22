@@ -22,6 +22,8 @@ var RendererController = function (wrapperId) {
 };
 
 RendererController.prototype.setState = function(state) {
+    if(this.state) this.state.onDestroy();
+
     switch (state) {
         case 'game':
             this.state = new GameController();

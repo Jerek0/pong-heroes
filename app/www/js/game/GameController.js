@@ -176,10 +176,15 @@ GameController.prototype.addBall = function (data, sendToServer) {
     ball.reset(new PIXI.Point(data.x, data.y));
     this.balls.push(ball);
     this.scene.addChild(this.balls[this.balls.length-1]);
+    this.balls[this.balls.length-1].launch(data.deltaX, data.deltaY);
 
     if(sendToServer){
-        this.serverGameUpdater.addBall(data);
-        this.balls[this.balls.length-1].launch(data.deltaX, data.deltaY);
+        this.serverGameUpdater.addBall({
+            x: this.balls[this.balls.length-1].position.x,
+            y: this.balls[this.balls.length-1].position.y,
+            deltaX: this.balls[this.balls.length-1].position.deltaX,
+            deltaY: this.balls[this.balls.length-1].position.deltaY
+        });
     }
 };
 
@@ -195,7 +200,10 @@ GameController.prototype.updateBall = function (data) {
     this.balls[data.index].x = data.x;
     this.balls[data.index].y = data.y;
     this.balls[data.index].position.deltaX = data.deltaX;
+    console.log('updating ball '+data.index+ ' with value '+data.deltaY);
+    console.log(this.balls[data.index].position.deltaY);
     this.balls[data.index].position.deltaY = data.deltaY;
+    console.log(this.balls[data.index].position.deltaY);
 };
 
 GameController.prototype.addPlayer = function (data, sendToServer) {
@@ -237,9 +245,16 @@ GameController.prototype.listenForPlayerPowers = function (index) {
     this.players[index].addEventListener('reverseBallsAngles', this.reverseBallsAngles.bind(this));
 };
 
+GameController.prototype.destroyPlayersListeners = function () {
+    for(var i = 0; i < this.players.length; i++) {
+        this.players[i].removeAllListeners('duplicateBall');
+        this.players[i].removeAllListeners('reverseBallsAngles');
+    }  
+};
+
 GameController.prototype.addBallFromPlayer = function(index) {
     this.addBall({
-        x: this.players[index].position.x + this.players[index].width,
+        x: (this.players[index].position.x < 640) ? this.players[index].position.x + this.players[index].width : this.players[index].position.x,
         y: this.players[index].position.y + (this.players[index].height / 2),
         deltaX: (this.players[index].position.x < 640 ? 5 : -5)
     }, true);
@@ -249,10 +264,12 @@ GameController.prototype.reverseBallsAngles = function () {
     var i, numberOfBalls = this.balls.length;
     
     for(i = 0; i < numberOfBalls; i++) {
+        this.balls[i].position.deltaY *= -1;
+        
         this.serverGameUpdater.updateBall({
             index: i,
             deltaX: this.balls[i].position.deltaX,
-            deltaY: this.balls[i].position.deltaY * (-1),
+            deltaY: this.balls[i].position.deltaY,
             x: this.balls[i].x,
             y: this.balls[i].y
         });
@@ -273,7 +290,13 @@ GameController.prototype.onScore = function (data, sendToServer) {
     
     if(sendToServer)
         this.serverGameUpdater.scored({ id: data.id});
-}
+};
+
+GameController.prototype.onDestroy = function () {
+    this.controlsManager.onDestroy();
+    this.destroyPlayersListeners();
+    this.serverGameUpdater.unbindServerEvents();
+};
 
 GameController.prototype.onResize = function () {
     var newWidth = window.innerWidth;
