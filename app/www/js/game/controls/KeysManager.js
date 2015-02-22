@@ -32,11 +32,6 @@ KeysManager.prototype.bindKeyDown = function (e) {
         case 81: // Q
             this.keyMap.firstPower = true;
             break;
-
-        case 90: // Z
-        case 87: // W
-            this.keyMap.secondPower = true;
-            break;
     }
 };
 
@@ -53,8 +48,6 @@ KeysManager.prototype.bindKeyUp = function(e) {
             
         case 65:
         case 81:
-        case 90:
-        case 87:
             this.launchingPower = false;
             break;
     }
@@ -68,11 +61,6 @@ KeysManager.prototype.update = function () {
     if(this.keyMap.firstPower && !this.launchingPower) {
         this.racket.firstPower();
         this.keyMap.firstPower = false;
-        this.launchingPower = true;
-    }
-    if(this.keyMap.secondPower && !this.launchingPower) {
-        this.racket.secondPower();
-        this.keyMap.secondPower = false;
         this.launchingPower = true;
     }
     

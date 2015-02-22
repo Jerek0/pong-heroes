@@ -59,8 +59,4 @@ Racket.prototype.firstPower = function () {
     console.log('firstPower');
 };
 
-Racket.prototype.secondPower = function () {
-    console.log('secondPower');
-};
-
 module.exports = Racket;
