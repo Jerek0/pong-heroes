@@ -2,6 +2,13 @@
  * Created by jerek0 on 14/02/2015.
  */
 
+/**
+ * BALL *
+ * 
+ * The main element of the game *
+ *
+ * @constructor
+ */
 var Ball = function () {
     PIXI.DisplayObjectContainer.call( this );
     
@@ -20,6 +27,10 @@ var Ball = function () {
 Ball.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
 Ball.prototype.constructor = Ball;
 
+/**
+ * Function allowing to reset the ball to a certain point without any inerty *
+ * @param point
+ */
 Ball.prototype.reset = function (point) {
     this.position.deltaX = 0;
     this.position.deltaY = 0;
@@ -28,33 +39,50 @@ Ball.prototype.reset = function (point) {
     this.position.y = point.y;
 };
 
+/**
+ * Function allowing to launch the ball in a given inerty *
+ * @param deltaX
+ * @param deltaY
+ */
 Ball.prototype.launch = function (deltaX, deltaY) {
     this.position.deltaX = deltaX  ? deltaX : (Math.round(Math.random()) * 2 - 1) * 5;
     this.position.deltaY = deltaY ? deltaY : (Math.random()*2 - 1) * 5;
 };
 
+/**
+ * Move the ball according to it's deltas *
+ */
 Ball.prototype.move = function() {
     this.position.x += this.position.deltaX;
     this.position.y += this.position.deltaY;
 };
 
+/**
+ * Accelerates the ball a little *
+ */
 Ball.prototype.accelerate = function() {
     this.position.deltaX *= 1.0005;
     this.position.deltaY *= 1.0005;
 };
 
+/**
+ * Check for player collisions with the ball and bounces it if needed *
+ * 
+ * See /app/docs/collisions.png for more infos *
+ * @param player
+ * @param index
+ */
 Ball.prototype.checkPlayersCollisions = function (player, index) {
-    //var hitBox = new PIXI.Rectangle(this.position.x - this.width / 2, this.position.y - this.height / 2, this.width, this.height);
+    // We get the ball's hitbox
     var hitBox = new PIXI.Rectangle(this.position.x, this.position.y, this.width, this.height);
     
-    // COLLISION DETECTEE
+    // We check for a collision with the player
     if(!(player.position.x > (hitBox.x + hitBox.width)    ||
         (player.position.x + player.width) < hitBox.x   ||
          player.position.y > (hitBox.y + hitBox.height)   ||
         (player.position.y + player.height) < hitBox.y))
     {
         // TODO - Watch memory on collisions
-        // TODO - Debuguer la sécurité pour pas collisioner en boucle qui ne marche pas
         if(this.colliding[index] == false) {
             // CAS 1 - Rebond sur X uniquement
             if(hitBox.y + hitBox.height > player.position.y && (hitBox.y + hitBox.height) < (player.position.y + player.height) )
@@ -113,6 +141,11 @@ Ball.prototype.checkPlayersCollisions = function (player, index) {
     }
 }
 
+/**
+ * Check for boundaries collisions *
+ * @param Rectangle
+ * @returns {*}
+ */
 Ball.prototype.checkBoundariesCollisions = function (Rectangle) {
     if(this.position.x + this.width > Rectangle.width || this.position.x < 0) {
         this.position.deltaX = - this.position.deltaX;

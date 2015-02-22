@@ -5,6 +5,14 @@
 var CustomEventDispatcher = require('../events/CustomEventDispatcher');
 var serverConfig = require('./serverConfig');
 
+
+/**
+ * SERVER DIALER *
+ * 
+ * This class is the main dialer with the server before the actual game state *
+ * This class is accessible everywhere (set in global in the PageManager) * 
+ * @constructor
+ */
 var ServerDialer = function() {
     this.init();
 }

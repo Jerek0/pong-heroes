@@ -2,6 +2,12 @@
  * Created by jerek0 on 15/02/2015.
  */
 
+/**
+ * SCORE VIEW
+ * @param position
+ * @param value
+ * @constructor
+ */
 var Score = function(position, value) {
     PIXI.DisplayObjectContainer.call( this );
     
@@ -15,6 +21,10 @@ var Score = function(position, value) {
 Score.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
 Score.prototype.constructor = Score;
 
+/**
+ * Function allowing to update the Score's value *
+ * @param value
+ */
 Score.prototype.updateValue = function (value) {
     this.text.setText(value);
 }

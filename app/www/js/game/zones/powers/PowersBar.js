@@ -1,7 +1,13 @@
 /**
  * Created by jerek0 on 22/02/2015.
  */
-    
+
+/**
+ * Bar of available powers for the current player 
+ * 
+ * Only shows one for the moment but it may be useful for the future *
+ * @type {exports}
+ */
 var PowerButton = require('./PowerButton');
 
 var PowersBar = function (position) {
@@ -15,6 +21,10 @@ var PowersBar = function (position) {
 PowersBar.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
 PowersBar.prototype.constructor = PowersBar;
 
+/**
+ * Add a power visual to the list*
+ * @param powerName
+ */
 PowersBar.prototype.addPower = function (powerName) {
     var power = new PowerButton(powerName);
     this.powers.push(power);
