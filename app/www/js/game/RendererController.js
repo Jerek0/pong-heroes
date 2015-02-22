@@ -12,7 +12,9 @@ var RendererController = function (wrapperId) {
     var scope = this;
     global.assetsLoader = new PIXI.AssetLoader([
         "img/ball.png",
-        "img/background.png"
+        "img/background.png",
+        "img/hero1.png",
+        "img/hero2.png"
     ]).on('onComplete', function() {
         requestAnimationFrame(scope.update.bind(scope));
     });

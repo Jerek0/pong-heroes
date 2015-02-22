@@ -4,7 +4,9 @@
 var StateController = require('./StateController');
 var Scene = require('./zones/Scene');
 var Ball = require('./entities/Ball');
-var Racket = require('./entities/Racket');
+var Racket = require('./entities/rackets/Racket');
+var RedFury = require('./entities/rackets/RedFury');
+var BlueFury = require('./entities/rackets/BlueFury');
 var Score = require('./entities/Score');
 var KeysManager = require('./controls/KeysManager');
 var GyroManager = require('./controls/GyroManager');
@@ -60,6 +62,7 @@ GameController.prototype.initHost = function () {
     // PLAYER INIT
     this.addPlayer({
         id: this.player,
+        type: localStorage.getItem('PH-character'),
         x: 20,
         y: this.scene.baseHeight/2
     }, true);
@@ -73,7 +76,8 @@ GameController.prototype.initClient = function () {
     // PLAYER INIT
     this.addPlayer({
         id: this.player,
-        x: this.scene.baseWidth - 60,
+        type: localStorage.getItem('PH-character'),
+        x: this.scene.baseWidth - 100,
         y: this.scene.baseHeight / 2
     }, true);
 
@@ -195,7 +199,21 @@ GameController.prototype.updateBall = function (data) {
 
 GameController.prototype.addPlayer = function (data, sendToServer) {
     // Add the actual player in the scene
-    var player = new Racket(new PIXI.Point(data.x, data.y));
+    var player;
+    
+    switch (data.type) {
+        case "1":
+            player = new RedFury(new PIXI.Point(data.x, data.y));
+            break;
+        case "2":
+            player = new BlueFury(new PIXI.Point(data.x, data.y));
+            break;
+        default:
+            player = new Racket(new PIXI.Point(data.x, data.y));
+            break;
+    }
+    
+    
     this.players[data.id] = player;
     this.scene.addChild(this.players[data.id]);
     

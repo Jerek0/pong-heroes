@@ -45,4 +45,13 @@ Racket.prototype.checkBoundariesCollisions = function () {
     }
 };
 
+Racket.prototype.faceTheRightWay = function () {
+    if(this.position.x < 640) {
+        this.graphics.anchor.y = 1;
+    } else {
+        this.graphics.anchor.x = 1;
+    }
+    this.graphics.rotation = Math.PI * ((this.position.x > 640 ? -1 : 1) * 90) / 180;
+};
+
 module.exports = Racket;
