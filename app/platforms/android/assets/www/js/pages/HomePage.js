@@ -4,6 +4,10 @@
 
 var Page = require('./Page');
 
+/**
+ * HOME PAGE *
+ * @constructor
+ */
 var HomePage = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
@@ -11,11 +15,13 @@ var HomePage = function() {
     this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
     this.setTemplateUrl('templates/home.html');
 };
-
 // Héritage de Page
 HomePage.prototype = new Page();
 HomePage.prototype.constructor = HomePage;
 
+/**
+ * Function called when the markup has been loaded and displayed *
+ */
 HomePage.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
     
@@ -26,7 +32,8 @@ HomePage.prototype.onPageDisplayed = function() {
     btnPlay.addEventListener('click', function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'TechnoPage' });
     });
-
+    
+    // Show the user's current highscore
     var highscores = document.getElementById("highscore");
     highscores.innerHTML = localStorage.getItem('PH-highscore') ? localStorage.getItem('PH-highscore') : 0;
 };

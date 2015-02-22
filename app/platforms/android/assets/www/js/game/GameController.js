@@ -4,13 +4,24 @@
 var StateController = require('./StateController');
 var Scene = require('./zones/Scene');
 var Ball = require('./entities/Ball');
-var Racket = require('./entities/Racket');
+var Racket = require('./entities/rackets/Racket');
+var RedFury = require('./entities/rackets/RedFury');
+var BlueFury = require('./entities/rackets/BlueFury');
 var Score = require('./entities/Score');
+var PowersBar = require('./zones/powers/PowersBar');
 var KeysManager = require('./controls/KeysManager');
 var GyroManager = require('./controls/GyroManager');
 var ServerGameUpdater = require('../network/ServerGameUpdater');
-var ScoreManager = require('./managers/ScoreManager')
+var ScoreManager = require('./managers/ScoreManager');
 
+/**
+ * GAME CONTROLLER *
+ * 
+ * Yup, that's a big one ! *
+ * 
+ * Main manager of the game *
+ * @constructor
+ */
 var GameController = function () {
     
     // STAGE AND SCENE SETTINGS
@@ -20,6 +31,14 @@ var GameController = function () {
     this.onResize(); // Center and resize the scene according to it's ratio
     window.onresize = this.onResize.bind(this);
     this.boundaries = new PIXI.Rectangle(0,0,1280,1024); // Frame collisions
+
+    var background = new PIXI.Sprite.fromImage('img/background.png');
+    background.width = 1280;
+    background.height = 1024;
+    this.scene.addChild(background);
+
+    this.powersBar = new PowersBar(new PIXI.Point(window.innerWidth - 20,window.innerHeight - 48 - 20));
+    this.stage.addChild(this.powersBar);
 
     // ENTITIES
     this.balls = [];
@@ -37,20 +56,18 @@ var GameController = function () {
         this.initClient();
     }
     this.lastUpdate = Date.now();
-
-    var background = new PIXI.Sprite.fromImage('img/background.png');
-    background.width = window.innerWidth;
-    background.height = window.innerHeight;
-    this.stage.addChild(background);
 };
 GameController.prototype = new StateController();
 GameController.prototype.constructor = GameController;
 
+/**
+ * Initialize the game as a host *
+ */
 GameController.prototype.initHost = function () {
     this.player = 0;
     
     // BALLS INIT
-    for(var i = 0; i < 16; i++) {
+    for(var i = 0; i < 1; i++) {
         this.addBall({
             x: (this.scene.baseWidth / 2),
             y: (this.scene.baseHeight / 2)
@@ -60,26 +77,38 @@ GameController.prototype.initHost = function () {
     // PLAYER INIT
     this.addPlayer({
         id: this.player,
+        type: localStorage.getItem('PH-character'),
         x: 20,
         y: this.scene.baseHeight/2
     }, true);
     
+    this.powersBar.addPower(this.players[this.player].powerName);
+    
     this.initControls();
 };
 
+/**
+ * Initialize the game as a client *
+ */
 GameController.prototype.initClient = function () {
     this.player = 1;
 
     // PLAYER INIT
     this.addPlayer({
         id: this.player,
-        x: this.scene.baseWidth - 40,
+        type: localStorage.getItem('PH-character'),
+        x: this.scene.baseWidth - 100,
         y: this.scene.baseHeight / 2
     }, true);
+
+    this.powersBar.addPower(this.players[this.player].powerName);
 
     this.initControls();
 };
 
+/**
+ * Initialize the controls * 
+ */
 GameController.prototype.initControls = function () {
     if(localStorage.getItem('PH-tech') == 'gyro') {
         this.controlsManager = new GyroManager(this.players[this.player]);
@@ -88,6 +117,9 @@ GameController.prototype.initControls = function () {
     }
 };
 
+/**
+ * MAIN LOOP of this state *
+ */
 GameController.prototype.update = function () {
     
     var numberOfBalls = this.balls.length,
@@ -103,7 +135,7 @@ GameController.prototype.update = function () {
         // Collisions
         if(this.role == "host"){
             for(j=0;j<numberOfPlayers;j++) {
-                this.balls[i].checkPlayersCollisions(this.players[j]);
+                this.balls[i].checkPlayersCollisions(this.players[j], j);
             }
             
             collision = this.balls[i].checkBoundariesCollisions(this.boundaries);
@@ -121,6 +153,7 @@ GameController.prototype.update = function () {
         }
     }
     
+    // Update the user's player only
     for(i=0; i < numberOfPlayers; i++) {
         if(this.players[i]) {
             // If it's our player, apply friction
@@ -132,11 +165,14 @@ GameController.prototype.update = function () {
         }
     };
     
+    // NETWORK UPDATES EVERY 1/25s
     if((Date.now() - this.lastUpdate) > (1000/25) ) {
         this.lastUpdate = Date.now();
         
-        // SI ON EST LE HOST, ON UPDATE LES DELTA
+        // IF WE'RE THE HOST
         if(this.role == 'host') {
+
+            // WE UPDATE THE BALLS DELTAS
             for(i = 0; i < numberOfBalls; i++) {
                 this.serverGameUpdater.updateBall({
                     index: i,
@@ -146,7 +182,8 @@ GameController.prototype.update = function () {
                     y: this.balls[i].y
                 });
             }
-
+            
+            // WE UPDATE THE HOST POSITION AND DELTAS
             if(this.players[0]) {
                 this.serverGameUpdater.updatePlayer({
                     index: 0,
@@ -154,8 +191,10 @@ GameController.prototype.update = function () {
                     y: this.players[0].y
                 });
             }
-        } else {
+        } else { // IF WE'RE THE CLIENT
             if(this.players[1]){
+                
+                // WE UPDATE THE CLIENT POSITION AND DELTAS
                 this.serverGameUpdater.updatePlayer({
                     index: 1,
                     deltaY: this.players[1].position.deltaY,
@@ -166,18 +205,39 @@ GameController.prototype.update = function () {
     }
 };
 
+/*
+    ##################################
+    ###### BALLS MANAGEMENT ##########
+    ##################################
+ */
+
+/**
+ * Add a ball to the scene and launch it *
+ * @param data - Parameters (x, y, deltaX, deltaY), deltas are not required
+ * @param sendToServer - Do we need to notify the server ?
+ */
 GameController.prototype.addBall = function (data, sendToServer) {
     var ball = new Ball();
     ball.reset(new PIXI.Point(data.x, data.y));
     this.balls.push(ball);
     this.scene.addChild(this.balls[this.balls.length-1]);
+    this.balls[this.balls.length-1].launch(data.deltaX, data.deltaY);
 
     if(sendToServer){
-        this.serverGameUpdater.addBall(data);
-        this.balls[this.balls.length-1].launch();
+        this.serverGameUpdater.addBall({
+            x: this.balls[this.balls.length-1].position.x,
+            y: this.balls[this.balls.length-1].position.y,
+            deltaX: this.balls[this.balls.length-1].position.deltaX,
+            deltaY: this.balls[this.balls.length-1].position.deltaY
+        });
     }
 };
 
+/**
+ * Removes a ball from the scene * 
+ * @param data - Parameters (id)
+ * @param sendToServer - Do we need to notify the server ?
+ */
 GameController.prototype.removeBall = function (data, sendToServer) {
     this.scene.removeChild(this.balls[data.id]);
     this.balls.splice(data.id, 1);
@@ -186,6 +246,10 @@ GameController.prototype.removeBall = function (data, sendToServer) {
         this.serverGameUpdater.removeBall(data);
 };
 
+/**
+ * Updates a ball of the scene *
+ * @param data - Parameters (index, x, y, deltaX, deltaY), each is required
+ */
 GameController.prototype.updateBall = function (data) {
     this.balls[data.index].x = data.x;
     this.balls[data.index].y = data.y;
@@ -193,11 +257,40 @@ GameController.prototype.updateBall = function (data) {
     this.balls[data.index].position.deltaY = data.deltaY;
 };
 
+/*
+     ##################################
+     ###### PLAYERS MANAGEMENT ########
+     ##################################
+ */
+
+/**
+ * Adds a player to the scene * 
+ * @param data - Parameters (type,x,y), all required
+ * @param sendToServer - Do we need to notify the server ?
+ */
 GameController.prototype.addPlayer = function (data, sendToServer) {
     // Add the actual player in the scene
-    var player = new Racket(new PIXI.Point(data.x, data.y));
+    var player;
+    
+    // Instanciate the corresponding racket
+    switch (data.type) {
+        case "1":
+            player = new RedFury(new PIXI.Point(data.x, data.y));
+            break;
+        case "2":
+            player = new BlueFury(new PIXI.Point(data.x, data.y));
+            break;
+        default:
+            player = new Racket(new PIXI.Point(data.x, data.y));
+            break;
+    }
+    
+    // Adds the new player to the list and to the scene
     this.players[data.id] = player;
     this.scene.addChild(this.players[data.id]);
+    
+    // Listen for the new player's powers
+    this.listenForPlayerPowers(data.id);
     
     // Add it's scores
     this.scoreManager.addPlayer(data.id);
@@ -212,11 +305,83 @@ GameController.prototype.addPlayer = function (data, sendToServer) {
         this.serverGameUpdater.addPlayer(data);
 };
 
+/**
+ * Allows to update the position of a player *
+ * @param data - Parameters (index,y,deltaY) all required
+ */
 GameController.prototype.updatePlayer = function(data) {
     this.players[data.index].y = data.y;
     this.players[data.index].position.deltaY = data.deltaY;
-}
+};
 
+/**
+ * Player's power listeners *
+ * Launches the effect from here *
+ * @param index - The player's index of the list we want to listen
+ */
+GameController.prototype.listenForPlayerPowers = function (index) {
+    this.players[index].addEventListener('duplicateBall', this.addBallFromPlayer.bind(this, index));
+    this.players[index].addEventListener('reverseBallsAngles', this.reverseBallsAngles.bind(this));
+};
+
+/**
+ * Destroy the players listeners in order to avoid duplication of listeners issues *
+ */
+GameController.prototype.destroyPlayersListeners = function () {
+    for(var i = 0; i < this.players.length; i++) {
+        this.players[i].removeAllListeners('duplicateBall');
+        this.players[i].removeAllListeners('reverseBallsAngles');
+    }  
+};
+
+/* ######## PLAYERS POWERS #########
+
+/**
+ * Power allowing to add a ball from the current position of a player, in the right direction *
+ * @param index - The player index in the list
+ */
+GameController.prototype.addBallFromPlayer = function(index) {
+    this.powersBar.powers[0].coolDown();
+    
+    this.addBall({
+        x: (this.players[index].position.x < 640) ? this.players[index].position.x + this.players[index].width : this.players[index].position.x,
+        y: this.players[index].position.y + (this.players[index].height / 2),
+        deltaX: (this.players[index].position.x < 640 ? 5 : -5)
+    }, true);
+};
+
+/**
+ * Power allowing to reverse the deltaY of each balls in the scene *
+ */
+GameController.prototype.reverseBallsAngles = function () {
+    var i, numberOfBalls = this.balls.length;
+
+    this.powersBar.powers[0].coolDown();
+    
+    for(i = 0; i < numberOfBalls; i++) {
+        this.balls[i].position.deltaY *= -1;
+        
+        this.serverGameUpdater.updateBall({
+            index: i,
+            deltaX: this.balls[i].position.deltaX,
+            deltaY: this.balls[i].position.deltaY,
+            x: this.balls[i].x,
+            y: this.balls[i].y
+        });
+    }
+};
+
+/*
+ ##########################################
+ ###### GAME CONTROLLER MANAGEMENT ########
+ ##########################################
+ */
+
+/**
+ * Function called when there's a goal ! *
+ * @param data - Parameters (id), all required
+ * @param sendToServer - Do we need to notify the server ?
+ */
 GameController.prototype.onScore = function (data, sendToServer) {
     this.scoreManager.incrementScore(data.id);
     this.scores[data.id].updateValue(this.scoreManager.getScoreByPlayer(data.id));
@@ -226,8 +391,20 @@ GameController.prototype.onScore = function (data, sendToServer) {
     
     if(sendToServer)
         this.serverGameUpdater.scored({ id: data.id});
-}
+};
 
+/**
+ * Function called when changin state, allowing to avoid listeners duplications issues *
+ */
+GameController.prototype.onDestroy = function () {
+    this.controlsManager.onDestroy();
+    this.destroyPlayersListeners();
+    this.serverGameUpdater.unbindServerEvents();
+};
+
+/**
+ * Function called on window resize, allowing to resize the scene to the same ratio and centering it *
+ */
 GameController.prototype.onResize = function () {
     var newWidth = window.innerWidth;
     var newHeight = window.innerHeight;

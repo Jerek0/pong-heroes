@@ -2,6 +2,15 @@
  * Created by jerek0 on 14/02/2015.
  */
 
+/**
+ * SCENE
+ * 
+ * All the magic will happen in this DisplayObjectContainer *
+ *
+ * @param width
+ * @param height
+ * @constructor
+ */
 var Scene = function(width, height) {
     PIXI.DisplayObjectContainer.call( this );
     

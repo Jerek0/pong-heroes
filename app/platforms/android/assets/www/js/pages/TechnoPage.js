@@ -4,6 +4,13 @@
 
 var Page = require('./Page');
 
+/**
+ * TECHNO PAGE *
+ * 
+ * Here the user decides of the technology he will use to play *
+ * We store that information in the localStorage to use it later *
+ * @constructor
+ */
 var TechnoPage = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
@@ -16,12 +23,18 @@ var TechnoPage = function() {
 TechnoPage.prototype = new Page();
 TechnoPage.prototype.constructor = TechnoPage;
 
+/**
+ * Function called when the markup has been loaded and displayed *
+ */
 TechnoPage.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
     
     this.bindUiEvents();
 };
 
+/**
+ * Event listeners management *
+ */
 TechnoPage.prototype.bindUiEvents = function() {
     var scope = this;
     var btnBack = document.getElementById("btn-back");
@@ -32,6 +45,9 @@ TechnoPage.prototype.bindUiEvents = function() {
     this.registerTechnoChoosing();
 };
 
+/**
+ * Here we listen for all the tech buttons in the markup *
+ */
 TechnoPage.prototype.registerTechnoChoosing = function() {
     this.chooseTechnoHandler = this.chooseTechno.bind(this);
     
@@ -44,6 +60,9 @@ TechnoPage.prototype.registerTechnoChoosing = function() {
     }
 };
 
+/**
+ * Destroy the tech button's listeners * 
+ */
 TechnoPage.prototype.destroyTechnoChoosing = function() {
     var numberOfTechnos = this.technoChoosers.length;
     var i;
@@ -52,6 +71,11 @@ TechnoPage.prototype.destroyTechnoChoosing = function() {
     }
 };
 
+/**
+ * Function called when a tech is choosed by clicking on it's button *
+ * Lead to the ChooseCharacterPage *
+ * @param e
+ */
 TechnoPage.prototype.chooseTechno = function(e) {
     console.log(e);
     localStorage.setItem('PH-tech', e.target.dataset.tech);

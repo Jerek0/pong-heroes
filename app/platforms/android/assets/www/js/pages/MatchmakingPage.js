@@ -4,8 +4,15 @@
 
 var Page = require('./Page');
 
+/**
+ * MATCHMAKING PAGE *
+ * 
+ * Here the users has the possibility to choose a gaming room or to host his own *
+ * @constructor
+ */
 var MatchmakingPage = function() {
-    // Functions handlers
+    
+    // Functions handlers (necessary if we want to kill the listeners later ...)
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
     this.populateRoomsHandler = this.populateRooms.bind(this);
     this.joinRoomHandler = this.joinRoom.bind(this);
@@ -20,7 +27,7 @@ MatchmakingPage.prototype = new Page();
 MatchmakingPage.prototype.constructor = MatchmakingPage;
 
 /**
- * Function called when view is ready *
+ * Function called when the markup has been loaded and displayed *
  */
 MatchmakingPage.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
@@ -47,6 +54,9 @@ MatchmakingPage.prototype.bindUiActions = function () {
     this.btnRefresh.addEventListener('click', this.askForRoomsHandler);
 };
 
+/**
+ * Unbind User Interface Actions*
+ */
 MatchmakingPage.prototype.unbindUiActions = function() {
     this.btnHost.removeEventListener('click', this.newHostHandler);
     this.btnRefresh.removeEventListener('click', this.askForRoomsHandler);

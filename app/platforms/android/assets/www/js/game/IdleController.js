@@ -3,12 +3,23 @@
  */
 var StateController = require('./StateController');
 var Ball = require('./entities/Ball');
-    
+
+/**
+ * IDLE CONTROLLER
+ * 
+ * Basic state with some balls moving around behing pages *
+ *
+ * @constructor
+ */
 var IdleController = function () {
+    
+    // Yellow background
     this.stage = new PIXI.Stage(0xF3BD0B);
     
+    // Set the boundaries which will be used for collisions
     this.boundaries = new PIXI.Rectangle(0,0,window.innerWidth, window.innerHeight);
     
+    // Populate with some balls moving in random directions
     this.balls = [];
     for(var i = 0; i < 4; i++){
         this.balls[i] = new Ball();
@@ -20,6 +31,7 @@ var IdleController = function () {
         this.stage.addChild(this.balls[i]);
     }
     
+    // Background texture
     var background = new PIXI.Sprite.fromImage('img/background.png');
     background.width = window.innerWidth;
     background.height = window.innerHeight;
@@ -28,6 +40,9 @@ var IdleController = function () {
 IdleController.prototype = new StateController();
 IdleController.prototype.constructor = IdleController;
 
+/**
+ * Main loop of this state *
+ */
 IdleController.prototype.update = function() {
     
     // UPDATE ALL THE BALLS

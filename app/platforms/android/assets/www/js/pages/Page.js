@@ -3,6 +3,13 @@
  */
 var CustomEventDispatcher = require('../events/CustomEventDispatcher');
 
+/**
+ * Page class *
+ * 
+ * Each of the pages will inherit from this *
+ * Pages also need to inherit CustomEventDispatcher to allow them to dial with the PageManager *
+ * @constructor
+ */
 var Page = function() {
     this.templateUrl = '';
 }
@@ -10,12 +17,18 @@ var Page = function() {
 Page.prototype = new CustomEventDispatcher();
 Page.prototype.constructor = Page;
 
+/**
+ * Change the HTML template file URL *
+ * @param value
+ */
 Page.prototype.setTemplateUrl = function(value) {
     this.templateUrl = value;
     this.loadTemplate();
 }
 
-// Chargement ajax du template de la page
+/**
+ * Loads templateUrl with an XHR Ajax request and wait for it's response *
+ */
 Page.prototype.loadTemplate = function() {
     var scope = this;
     var xmlhttp;
@@ -42,6 +55,10 @@ Page.prototype.loadTemplate = function() {
     }
 };
 
+/**
+ * This will be called on each page changement *
+ * Need to be overriden when a page uses eventListeners *
+ */
 Page.prototype.unbindUiActions = function() {
     // Function to override !
 };

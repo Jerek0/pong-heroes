@@ -45,11 +45,30 @@ app.initialize();
 /**
  * Created by jerek0 on 08/02/2015.
  */
+
+/**
+ * CUSTOM EVENT DISPATCHER *
+ * 
+ * This is a custom events managing system allowing to use events
+ * with JS Objects and not only with DOM elements
+ * 
+ * It works with classical 'addEventListeners', 'removeEventListeners', etc. 
+ *
+ * @constructor
+ */
 function CustomEventDispatcher() { this._init(); }
 
 CustomEventDispatcher.prototype._init= function() {
     this._registrations= {};
 };
+
+/**
+ * Get all the listeners of a certain type *
+ * @param type - The event name
+ * @param useCapture
+ * @returns {*}
+ * @private
+ */
 CustomEventDispatcher.prototype._getListeners= function(type, useCapture) {
     var captype= (useCapture? '1' : '0')+type;
     if (!(captype in this._registrations))
@@ -57,6 +76,12 @@ CustomEventDispatcher.prototype._getListeners= function(type, useCapture) {
     return this._registrations[captype];
 };
 
+/**
+ * Add a listener of a certain type with a callback function *
+ * @param type - The event name
+ * @param listener - The callback function
+ * @param useCapture
+ */
 CustomEventDispatcher.prototype.addEventListener= function(type, listener, useCapture) {
     var listeners= this._getListeners(type, useCapture);
     var ix= listeners.indexOf(listener);
@@ -64,17 +89,24 @@ CustomEventDispatcher.prototype.addEventListener= function(type, listener, useCa
         listeners.push(listener);
 };
 
+/**
+ * Removes a listener of a certain type and with a certain callback function *
+ * @param type - The event name
+ * @param listener - The callback function
+ * @param useCapture
+ */
 CustomEventDispatcher.prototype.removeEventListener= function(type, listener, useCapture) {
     var listeners= this._getListeners(type, useCapture);
     var ix= listeners.indexOf(listener);
-    //console.log(listeners);
-    //console.log(ix);
     if (ix!==-1)
         listeners.splice(ix, 1);
-    //console.log(listeners);
-    //console.log('######');
 };
 
+/**
+ * Dispatch an event which will be receivable by all the object's listeners *
+ * @param evt
+ * @returns {boolean}
+ */
 CustomEventDispatcher.prototype.dispatchEvent= function(evt) {
     var listeners= this._getListeners(evt.type, false).slice();
     for (var i= 0; i<listeners.length; i++)
@@ -101,6 +133,14 @@ var GyroManager = require('./controls/GyroManager');
 var ServerGameUpdater = require('../network/ServerGameUpdater');
 var ScoreManager = require('./managers/ScoreManager');
 
+/**
+ * GAME CONTROLLER *
+ * 
+ * Yup, that's a big one ! *
+ * 
+ * Main manager of the game *
+ * @constructor
+ */
 var GameController = function () {
     
     // STAGE AND SCENE SETTINGS
@@ -139,6 +179,9 @@ var GameController = function () {
 GameController.prototype = new StateController();
 GameController.prototype.constructor = GameController;
 
+/**
+ * Initialize the game as a host *
+ */
 GameController.prototype.initHost = function () {
     this.player = 0;
     
@@ -163,6 +206,9 @@ GameController.prototype.initHost = function () {
     this.initControls();
 };
 
+/**
+ * Initialize the game as a client *
+ */
 GameController.prototype.initClient = function () {
     this.player = 1;
 
@@ -179,6 +225,9 @@ GameController.prototype.initClient = function () {
     this.initControls();
 };
 
+/**
+ * Initialize the controls * 
+ */
 GameController.prototype.initControls = function () {
     if(localStorage.getItem('PH-tech') == 'gyro') {
         this.controlsManager = new GyroManager(this.players[this.player]);
@@ -187,6 +236,9 @@ GameController.prototype.initControls = function () {
     }
 };
 
+/**
+ * MAIN LOOP of this state *
+ */
 GameController.prototype.update = function () {
     
     var numberOfBalls = this.balls.length,
@@ -220,6 +272,7 @@ GameController.prototype.update = function () {
         }
     }
     
+    // Update the user's player only
     for(i=0; i < numberOfPlayers; i++) {
         if(this.players[i]) {
             // If it's our player, apply friction
@@ -235,8 +288,10 @@ GameController.prototype.update = function () {
     if((Date.now() - this.lastUpdate) > (1000/25) ) {
         this.lastUpdate = Date.now();
         
-        // SI ON EST LE HOST, ON UPDATE LES DELTA
+        // IF WE'RE THE HOST
         if(this.role == 'host') {
+
+            // WE UPDATE THE BALLS DELTAS
             for(i = 0; i < numberOfBalls; i++) {
                 this.serverGameUpdater.updateBall({
                     index: i,
@@ -246,7 +301,8 @@ GameController.prototype.update = function () {
                     y: this.balls[i].y
                 });
             }
-
+            
+            // WE UPDATE THE HOST POSITION AND DELTAS
             if(this.players[0]) {
                 this.serverGameUpdater.updatePlayer({
                     index: 0,
@@ -254,8 +310,10 @@ GameController.prototype.update = function () {
                     y: this.players[0].y
                 });
             }
-        } else {
+        } else { // IF WE'RE THE CLIENT
             if(this.players[1]){
+                
+                // WE UPDATE THE CLIENT POSITION AND DELTAS
                 this.serverGameUpdater.updatePlayer({
                     index: 1,
                     deltaY: this.players[1].position.deltaY,
@@ -266,6 +324,17 @@ GameController.prototype.update = function () {
     }
 };
 
+/*
+    ##################################
+    ###### BALLS MANAGEMENT ##########
+    ##################################
+ */
+
+/**
+ * Add a ball to the scene and launch it *
+ * @param data - Parameters (x, y, deltaX, deltaY), deltas are not required
+ * @param sendToServer - Do we need to notify the server ?
+ */
 GameController.prototype.addBall = function (data, sendToServer) {
     var ball = new Ball();
     ball.reset(new PIXI.Point(data.x, data.y));
@@ -283,6 +352,11 @@ GameController.prototype.addBall = function (data, sendToServer) {
     }
 };
 
+/**
+ * Removes a ball from the scene * 
+ * @param data - Parameters (id)
+ * @param sendToServer - Do we need to notify the server ?
+ */
 GameController.prototype.removeBall = function (data, sendToServer) {
     this.scene.removeChild(this.balls[data.id]);
     this.balls.splice(data.id, 1);
@@ -291,20 +365,33 @@ GameController.prototype.removeBall = function (data, sendToServer) {
         this.serverGameUpdater.removeBall(data);
 };
 
+/**
+ * Updates a ball of the scene *
+ * @param data - Parameters (index, x, y, deltaX, deltaY), each is required
+ */
 GameController.prototype.updateBall = function (data) {
     this.balls[data.index].x = data.x;
     this.balls[data.index].y = data.y;
     this.balls[data.index].position.deltaX = data.deltaX;
-    console.log('updating ball '+data.index+ ' with value '+data.deltaY);
-    console.log(this.balls[data.index].position.deltaY);
     this.balls[data.index].position.deltaY = data.deltaY;
-    console.log(this.balls[data.index].position.deltaY);
 };
 
+/*
+     ##################################
+     ###### PLAYERS MANAGEMENT ########
+     ##################################
+ */
+
+/**
+ * Adds a player to the scene * 
+ * @param data - Parameters (type,x,y), all required
+ * @param sendToServer - Do we need to notify the server ?
+ */
 GameController.prototype.addPlayer = function (data, sendToServer) {
     // Add the actual player in the scene
     var player;
     
+    // Instanciate the corresponding racket
     switch (data.type) {
         case "1":
             player = new RedFury(new PIXI.Point(data.x, data.y));
@@ -317,9 +404,11 @@ GameController.prototype.addPlayer = function (data, sendToServer) {
             break;
     }
     
-    
+    // Adds the new player to the list and to the scene
     this.players[data.id] = player;
     this.scene.addChild(this.players[data.id]);
+    
+    // Listen for the new player's powers
     this.listenForPlayerPowers(data.id);
     
     // Add it's scores
@@ -335,11 +424,28 @@ GameController.prototype.addPlayer = function (data, sendToServer) {
         this.serverGameUpdater.addPlayer(data);
 };
 
+/**
+ * Allows to update the position of a player *
+ * @param data - Parameters (index,y,deltaY) all required
+ */
+GameController.prototype.updatePlayer = function(data) {
+    this.players[data.index].y = data.y;
+    this.players[data.index].position.deltaY = data.deltaY;
+};
+
+/**
+ * Player's power listeners *
+ * Launches the effect from here *
+ * @param index - The player's index of the list we want to listen
+ */
 GameController.prototype.listenForPlayerPowers = function (index) {
     this.players[index].addEventListener('duplicateBall', this.addBallFromPlayer.bind(this, index));
     this.players[index].addEventListener('reverseBallsAngles', this.reverseBallsAngles.bind(this));
 };
 
+/**
+ * Destroy the players listeners in order to avoid duplication of listeners issues *
+ */
 GameController.prototype.destroyPlayersListeners = function () {
     for(var i = 0; i < this.players.length; i++) {
         this.players[i].removeAllListeners('duplicateBall');
@@ -347,6 +453,12 @@ GameController.prototype.destroyPlayersListeners = function () {
     }  
 };
 
+/* ######## PLAYERS POWERS #########
+
+/**
+ * Power allowing to add a ball from the current position of a player, in the right direction *
+ * @param index - The player index in the list
+ */
 GameController.prototype.addBallFromPlayer = function(index) {
     this.powersBar.powers[0].coolDown();
     
@@ -357,6 +469,9 @@ GameController.prototype.addBallFromPlayer = function(index) {
     }, true);
 };
 
+/**
+ * Power allowing to reverse the deltaY of each balls in the scene *
+ */
 GameController.prototype.reverseBallsAngles = function () {
     var i, numberOfBalls = this.balls.length;
 
@@ -375,11 +490,17 @@ GameController.prototype.reverseBallsAngles = function () {
     }
 };
 
-GameController.prototype.updatePlayer = function(data) {
-    this.players[data.index].y = data.y;
-    this.players[data.index].position.deltaY = data.deltaY;
-};
+/*
+ ##########################################
+ ###### GAME CONTROLLER MANAGEMENT ########
+ ##########################################
+ */
 
+/**
+ * Function called when there's a goal ! *
+ * @param data - Parameters (id), all required
+ * @param sendToServer - Do we need to notify the server ?
+ */
 GameController.prototype.onScore = function (data, sendToServer) {
     this.scoreManager.incrementScore(data.id);
     this.scores[data.id].updateValue(this.scoreManager.getScoreByPlayer(data.id));
@@ -391,12 +512,18 @@ GameController.prototype.onScore = function (data, sendToServer) {
         this.serverGameUpdater.scored({ id: data.id});
 };
 
+/**
+ * Function called when changin state, allowing to avoid listeners duplications issues *
+ */
 GameController.prototype.onDestroy = function () {
     this.controlsManager.onDestroy();
     this.destroyPlayersListeners();
     this.serverGameUpdater.unbindServerEvents();
 };
 
+/**
+ * Function called on window resize, allowing to resize the scene to the same ratio and centering it *
+ */
 GameController.prototype.onResize = function () {
     var newWidth = window.innerWidth;
     var newHeight = window.innerHeight;
@@ -432,12 +559,23 @@ module.exports = GameController;
  */
 var StateController = require('./StateController');
 var Ball = require('./entities/Ball');
-    
+
+/**
+ * IDLE CONTROLLER
+ * 
+ * Basic state with some balls moving around behing pages *
+ *
+ * @constructor
+ */
 var IdleController = function () {
+    
+    // Yellow background
     this.stage = new PIXI.Stage(0xF3BD0B);
     
+    // Set the boundaries which will be used for collisions
     this.boundaries = new PIXI.Rectangle(0,0,window.innerWidth, window.innerHeight);
     
+    // Populate with some balls moving in random directions
     this.balls = [];
     for(var i = 0; i < 4; i++){
         this.balls[i] = new Ball();
@@ -449,6 +587,7 @@ var IdleController = function () {
         this.stage.addChild(this.balls[i]);
     }
     
+    // Background texture
     var background = new PIXI.Sprite.fromImage('img/background.png');
     background.width = window.innerWidth;
     background.height = window.innerHeight;
@@ -457,6 +596,9 @@ var IdleController = function () {
 IdleController.prototype = new StateController();
 IdleController.prototype.constructor = IdleController;
 
+/**
+ * Main loop of this state *
+ */
 IdleController.prototype.update = function() {
     
     // UPDATE ALL THE BALLS
@@ -475,12 +617,24 @@ module.exports = IdleController;
  */
 var GameController = require('./GameController');
 var IdleController = require('./IdleController');
-    
+
+/**
+ * RENDERER CONTROLLER
+ *
+ * This is the main manager of the canvas *
+ * Launches PIXI, manage the assets, etc. *
+ *  
+ * @param wrapperId
+ * @constructor
+ */
 var RendererController = function (wrapperId) {
+    // Launch PIXI
     this.renderer = PIXI.autoDetectRenderer(window.innerWidth, window.innerHeight, { view: document.getElementById(wrapperId), resolution: 2 }, false, true);
 
+    // Set the state to idle by default
     this.setState('idle');
     
+    // ASSETS MANAGEMENT
     var scope = this;
     global.assetsLoader = new PIXI.AssetLoader([
         "img/ball.png",
@@ -493,6 +647,10 @@ var RendererController = function (wrapperId) {
     global.assetsLoader.load();
 };
 
+/**
+ * Allows to change the current state of the canvas *
+ * @param state
+ */
 RendererController.prototype.setState = function(state) {
     if(this.state) this.state.onDestroy();
 
@@ -509,6 +667,9 @@ RendererController.prototype.setState = function(state) {
     
 };
 
+/**
+ * Main loop, calling the current state update function *
+ */
 RendererController.prototype.update = function () {
     this.state.update();
     
@@ -522,14 +683,29 @@ module.exports = RendererController;
 /**
  * Created by jerek0 on 14/02/2015.
  */
+
+/**
+ * STATE CONTROLLER
+ * 
+ * Each state controller must inherit this class * 
+ * @* constructor
+ */
 var StateController = function () {
+    // We put a red background by default
     this.stage = new PIXI.Stage(0x333333);
 };
 
+/**
+ * Main loop of the state, to override *
+ */
 StateController.prototype.update = function() {
-    //console.log('updating');
+    //console.log('updating'); // This lags a lot !
 };
 
+/**
+ * Function called when changing the state to prevent listeners duplication issues *
+ * To override *
+ */
 StateController.prototype.onDestroy = function () {
 
 };
@@ -540,6 +716,14 @@ module.exports = StateController;
  * Created by jerek0 on 15/02/2015.
  */
 
+/**
+ * GYROSCOPIC MANAGER
+ * 
+ * Allows to control a racket with a gyroscopic sensor *
+ *  
+ * @param racket
+ * @constructor
+ */
 var GyroManager = function(racket) {
     this.racket = racket;
 
@@ -549,23 +733,33 @@ var GyroManager = function(racket) {
     this.bindOrientationHandler = this.bindOrientation.bind(this);
     this.bindMotionHandler = this.bindMotion.bind(this);
     
+    // Listeners
     window.addEventListener("deviceorientation", this.bindOrientationHandler);
     window.addEventListener("devicemotion", this.bindMotionHandler);
 
-        requestAnimationFrame(this.update.bind(this));
+    requestAnimationFrame(this.update.bind(this));
 };
 
+/**
+ * Managing the orientation of the device* 
+ * @param e
+ */
 GyroManager.prototype.bindOrientation = function (e) {
+    
     var gamma = e.gamma + 20; // -20 allows to play a little bended towards the player
-    //if(gamma < 2 && gamma > -2) gamma = 0;
-    var percentage = 1 * gamma / -20;
+    var percentage = 1 * gamma / -20; // Get the percentage of bending (max: -20, min: 20)
     
-    if(percentage > 1) percentage = 1;
-    else if( percentage < -1) percentage = -1;
+    if(percentage > 1) percentage = 1; // Can't go over 100%
+    else if( percentage < -1) percentage = -1; // Can't go under -100%
     
+    // Move the racket
     this.racket.position.deltaY += this.racket.acceleration * 4 * percentage;
 };
 
+/**
+ * Managing the acceleration of the device *
+ * @param e
+ */
 GyroManager.prototype.bindMotion = function (e) {
     if(((Date.now() - this.lastPowerLaunch) > 3000) && (e.acceleration.z > 5 || e.acceleration.z < -5)) {
         this.racket.firstPower();
@@ -573,11 +767,17 @@ GyroManager.prototype.bindMotion = function (e) {
     }
 };
 
+/**
+ * Main loop*
+ */
 GyroManager.prototype.update = function () {
-
+    // TODO - See if it's usefull ?
     requestAnimationFrame(this.update.bind(this));
 };
 
+/**
+ * Allowing to avoid listeners duplications issues *
+ */
 GyroManager.prototype.onDestroy = function () {
     window.removeEventListener("deviceorientation", this.bindOrientationHandler);
     window.removeEventListener("devicemotion", this.bindMotionHandler);
@@ -589,12 +789,21 @@ module.exports = GyroManager;
  * Created by jerek0 on 15/02/2015.
  */
 
+/**
+ * KEYS MANAGER
+ * 
+ * Allows to controller a racket with a keyboard *
+ *
+ * @param racket
+ * @constructor
+ */
 var KeysManager = function(racket) {
     this.racket = racket;
     
     this.keyMap = {
         up: false,
-        down: false
+        down: false,
+        firstPower: false
     };
 
     this.lastPowerLaunch = Date.now();
@@ -603,16 +812,19 @@ var KeysManager = function(racket) {
     this.bindKeyDownHandler = this.bindKeyDown.bind(this);
     this.bindKeyUpHandler = this.bindKeyUp.bind(this);
     
+    // Listeners
     window.addEventListener('keydown', this.bindKeyDownHandler);
     window.addEventListener('keyup', this.bindKeyUpHandler);
 
     requestAnimationFrame(this.update.bind(this));
 };
 
+/**
+ * On key down *
+ * @param e
+ */
 KeysManager.prototype.bindKeyDown = function (e) {
     var key = e.keyCode ? e.keyCode : e.which;
-    
-    console.log(key);
     
     switch (key) {
         case 40:
@@ -628,6 +840,10 @@ KeysManager.prototype.bindKeyDown = function (e) {
     }
 };
 
+/**
+ * On key up *
+ * @param e
+ */
 KeysManager.prototype.bindKeyUp = function(e) {
     var key = e.keyCode ? e.keyCode : e.which;
     
@@ -646,22 +862,31 @@ KeysManager.prototype.bindKeyUp = function(e) {
     
 };
 
+/**
+ * Main loop *
+ */
 KeysManager.prototype.update = function () {
+    
+    // If a moving key is toggled, me move the racket
     if(this.keyMap.up) this.racket.position.deltaY += -this.racket.acceleration;
     if(this.keyMap.down) this.racket.position.deltaY += this.racket.acceleration;
     
+    // If a power is toggled for the first time since at least 3000ms, we launch it
     if(this.keyMap.firstPower && !this.launchingPower && ((Date.now() - this.lastPowerLaunch) > 3000)) {
         this.racket.firstPower();
         this.keyMap.firstPower = false;
         this.launchingPower = true;
         this.lastPowerLaunch = Date.now();
-    } else {
+    } else { // Else we cancel it
         this.keyMap.firstPower = false;
     }
     
     requestAnimationFrame(this.update.bind(this));
 };
 
+/**
+ * Allows to avoid listeners duplications issues *
+ */
 KeysManager.prototype.onDestroy = function () {
     window.removeEventListener('keydown', this.bindKeyDownHandler);
     window.removeEventListener('keyup', this.bindKeyUpHandler);
@@ -673,6 +898,13 @@ module.exports = KeysManager;
  * Created by jerek0 on 14/02/2015.
  */
 
+/**
+ * BALL *
+ * 
+ * The main element of the game *
+ *
+ * @constructor
+ */
 var Ball = function () {
     PIXI.DisplayObjectContainer.call( this );
     
@@ -691,6 +923,10 @@ var Ball = function () {
 Ball.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
 Ball.prototype.constructor = Ball;
 
+/**
+ * Function allowing to reset the ball to a certain point without any inerty *
+ * @param point
+ */
 Ball.prototype.reset = function (point) {
     this.position.deltaX = 0;
     this.position.deltaY = 0;
@@ -699,33 +935,50 @@ Ball.prototype.reset = function (point) {
     this.position.y = point.y;
 };
 
+/**
+ * Function allowing to launch the ball in a given inerty *
+ * @param deltaX
+ * @param deltaY
+ */
 Ball.prototype.launch = function (deltaX, deltaY) {
     this.position.deltaX = deltaX  ? deltaX : (Math.round(Math.random()) * 2 - 1) * 5;
     this.position.deltaY = deltaY ? deltaY : (Math.random()*2 - 1) * 5;
 };
 
+/**
+ * Move the ball according to it's deltas *
+ */
 Ball.prototype.move = function() {
     this.position.x += this.position.deltaX;
     this.position.y += this.position.deltaY;
 };
 
+/**
+ * Accelerates the ball a little *
+ */
 Ball.prototype.accelerate = function() {
     this.position.deltaX *= 1.0005;
     this.position.deltaY *= 1.0005;
 };
 
+/**
+ * Check for player collisions with the ball and bounces it if needed *
+ * 
+ * See /app/docs/collisions.png for more infos *
+ * @param player
+ * @param index
+ */
 Ball.prototype.checkPlayersCollisions = function (player, index) {
-    //var hitBox = new PIXI.Rectangle(this.position.x - this.width / 2, this.position.y - this.height / 2, this.width, this.height);
+    // We get the ball's hitbox
     var hitBox = new PIXI.Rectangle(this.position.x, this.position.y, this.width, this.height);
     
-    // COLLISION DETECTEE
+    // We check for a collision with the player
     if(!(player.position.x > (hitBox.x + hitBox.width)    ||
         (player.position.x + player.width) < hitBox.x   ||
          player.position.y > (hitBox.y + hitBox.height)   ||
         (player.position.y + player.height) < hitBox.y))
     {
         // TODO - Watch memory on collisions
-        // TODO - Debuguer la sécurité pour pas collisioner en boucle qui ne marche pas
         if(this.colliding[index] == false) {
             // CAS 1 - Rebond sur X uniquement
             if(hitBox.y + hitBox.height > player.position.y && (hitBox.y + hitBox.height) < (player.position.y + player.height) )
@@ -784,6 +1037,11 @@ Ball.prototype.checkPlayersCollisions = function (player, index) {
     }
 }
 
+/**
+ * Check for boundaries collisions *
+ * @param Rectangle
+ * @returns {*}
+ */
 Ball.prototype.checkBoundariesCollisions = function (Rectangle) {
     if(this.position.x + this.width > Rectangle.width || this.position.x < 0) {
         this.position.deltaX = - this.position.deltaX;
@@ -804,6 +1062,12 @@ module.exports = Ball;
  * Created by jerek0 on 15/02/2015.
  */
 
+/**
+ * SCORE VIEW
+ * @param position
+ * @param value
+ * @constructor
+ */
 var Score = function(position, value) {
     PIXI.DisplayObjectContainer.call( this );
     
@@ -817,6 +1081,10 @@ var Score = function(position, value) {
 Score.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
 Score.prototype.constructor = Score;
 
+/**
+ * Function allowing to update the Score's value *
+ * @param value
+ */
 Score.prototype.updateValue = function (value) {
     this.text.setText(value);
 }
@@ -832,16 +1100,23 @@ module.exports = Score;
  */
 var Racket = require('./Racket');
 
+/**
+ * Blue racket *
+ * @param position
+ * @constructor
+ */
 var BlueFury = function(position) {
     Racket.call(this, position);
 
+    // Specs
     this.acceleration = 1;
     this.friction = 0.95;
 
+    // Power(s)
     this.powerName = 'reverseBallsAngles';
 
+    // Graphics
     this.removeChild(this.graphics);
-
     this.graphics = new PIXI.Sprite.fromImage('img/hero2.png');
     this.graphics.width = this.graphics.width / 2;
     this.graphics.height = this.graphics.height / 2;
@@ -857,38 +1132,63 @@ module.exports = BlueFury;
  * Created by jerek0 on 15/02/2015.
  */
 
+/**
+ * BASIC RACKET
+ * 
+ * Class to inherit *
+ *
+ * @param position
+ * @constructor
+ */
 var Racket = function (position) {
     PIXI.DisplayObjectContainer.call( this );
     PIXI.EventTarget.call(this);
     
+    // Position
     this.position.x = position.x;
     this.position.y = position.y;
     
+    // Basic specs
     this.position.deltaY = 0;
     this.friction = 0.9;
     this.acceleration = 2;
     
+    // Basic graphics
     this.graphics = new PIXI.Graphics();
     this.graphics.beginFill(0x4A3637);
     this.graphics.drawRect(0,0,40,160);
     this.addChild(this.graphics);
-    
 };
+// Inherit from DisplayObjectContainer
 Racket.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
 Racket.prototype.constructor = Racket;
 
+/**
+ * Changes the deltaY *
+ * @param delta
+ */
 Racket.prototype.move = function(delta) {
     this.position.deltaY += delta;
 };
 
+/**
+ * Apply friction to the racket *
+ */
 Racket.prototype.applyFriction = function () {
     this.position.deltaY *= this.friction;
 }
 
+/**
+ * Moves the racket according to it's delta * 
+ * (Only moving on the Y axis, cause it's a racket) *
+ */
 Racket.prototype.physics = function() {
     this.position.y += this.position.deltaY;
 }
 
+/**
+ * Check for boundaries collisions *
+ */
 Racket.prototype.checkBoundariesCollisions = function () {
     if(this.position.y >= (this.parent.baseHeight - this.height) || this.position.y <= 0) {
         if(this.position.y >= (this.parent.baseHeight - this.height)) {
@@ -901,6 +1201,9 @@ Racket.prototype.checkBoundariesCollisions = function () {
     }
 };
 
+/**
+ * Orients the racket in the right way, according to it's position on the scene *
+ */
 Racket.prototype.faceTheRightWay = function () {
     if(this.position.x < 640) {
         this.graphics.anchor.y = 1;
@@ -910,6 +1213,9 @@ Racket.prototype.faceTheRightWay = function () {
     this.graphics.rotation = Math.PI * ((this.position.x > 640 ? -1 : 1) * 90) / 180;
 };
 
+/**
+ * Launch it's first power *
+ */
 Racket.prototype.firstPower = function () {
     this.dispatchEvent(this.powerName);
 };
@@ -921,15 +1227,22 @@ module.exports = Racket;
  */
 var Racket = require('./Racket');
 
+/**
+ * Red racket *
+ * @param position
+ * @constructor
+ */
 var RedFury = function(position) {
     Racket.call(this, position);
     
+    // Specs
     this.acceleration = 3;
     
+    // Power(s)
     this.powerName = 'duplicateBall';
 
+    // Graphics
     this.removeChild(this.graphics);
-    
     this.graphics = new PIXI.Sprite.fromImage('img/hero1.png');
     this.graphics.width = this.graphics.width / 2;
     this.graphics.height = this.graphics.height / 2;
@@ -945,19 +1258,36 @@ module.exports = RedFury;
 /**
  * Created by jerek0 on 15/02/2015.
  */
-    
+
+/**
+ * SCORE MANAGER
+ * * @constructor
+ */
 var ScoreManager = function() {
     this.scores = [];
 };
 
+/**
+ * Adds a player to the list of scores *
+ * @param id
+ */
 ScoreManager.prototype.addPlayer = function (id) {
     this.scores[id] = 0;
 };
 
+/**
+ * Get a player's score by it's ID *
+ * @param id
+ * @returns {*}
+ */
 ScoreManager.prototype.getScoreByPlayer = function (id) {
     return this.scores[id];
 };
 
+/**
+ * Increment a player's score by it's ID *
+ * @param id
+ */
 ScoreManager.prototype.incrementScore = function (id) {
     this.scores[id]++;
 };
@@ -968,6 +1298,15 @@ module.exports = ScoreManager;
  * Created by jerek0 on 14/02/2015.
  */
 
+/**
+ * SCENE
+ * 
+ * All the magic will happen in this DisplayObjectContainer *
+ *
+ * @param width
+ * @param height
+ * @constructor
+ */
 var Scene = function(width, height) {
     PIXI.DisplayObjectContainer.call( this );
     
@@ -989,6 +1328,16 @@ module.exports = Scene;
  * Created by jerek0 on 22/02/2015.
  */
 
+/**
+ * POWER BUTTON
+ * 
+ * Element of a PowersBar *
+ * 
+ * Allows to see if the power is ready to use or not * 
+ * 
+ * @param powerName
+ * @constructor
+ */
 var PowerButton = function (powerName) {
     PIXI.DisplayObjectContainer.call( this );
     
@@ -1000,6 +1349,9 @@ var PowerButton = function (powerName) {
 PowerButton.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
 PowerButton.prototype.constructor = PowerButton;
 
+/**
+ * Function called when the power is used, notifying the user that he can't use it for a moment *
+ */
 PowerButton.prototype.coolDown = function() {
     this.powerVisual.alpha = 0.2;
     
@@ -1014,7 +1366,13 @@ module.exports = PowerButton;
 /**
  * Created by jerek0 on 22/02/2015.
  */
-    
+
+/**
+ * Bar of available powers for the current player 
+ * 
+ * Only shows one for the moment but it may be useful for the future *
+ * @type {exports}
+ */
 var PowerButton = require('./PowerButton');
 
 var PowersBar = function (position) {
@@ -1028,6 +1386,10 @@ var PowersBar = function (position) {
 PowersBar.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
 PowersBar.prototype.constructor = PowersBar;
 
+/**
+ * Add a power visual to the list*
+ * @param powerName
+ */
 PowersBar.prototype.addPower = function (powerName) {
     var power = new PowerButton(powerName);
     this.powers.push(power);
@@ -1046,6 +1408,14 @@ module.exports = PowersBar;
 var CustomEventDispatcher = require('../events/CustomEventDispatcher');
 var serverConfig = require('./serverConfig');
 
+
+/**
+ * SERVER DIALER *
+ * 
+ * This class is the main dialer with the server before the actual game state *
+ * This class is accessible everywhere (set in global in the PageManager) * 
+ * @constructor
+ */
 var ServerDialer = function() {
     this.init();
 }
@@ -1187,6 +1557,16 @@ module.exports = ServerDialer;
  */
 var CustomEventDispatcher = require('../events/CustomEventDispatcher');
 
+/**
+ * SERVER GAME UPDATER *
+ * 
+ * This is the second dialer with the server : in the actual game state *
+ * This class sends requests to the host/client via the server and receives the host's/client's requests via the server *
+ *  
+ * @param socket
+ * @param gameController
+ * @constructor
+ */
 var ServerGameUpdater = function (socket, gameController) {
     this.socket = socket;
     this.gameController = gameController;
@@ -1197,33 +1577,27 @@ var ServerGameUpdater = function (socket, gameController) {
 ServerGameUpdater.prototype = new CustomEventDispatcher();
 ServerGameUpdater.prototype.constructor = ServerGameUpdater;
 
+/*
+ #######################################
+ ######### REQUESTS TO RECEIVE #########
+ #######################################
+ */
+
+/**
+ * Function managing every request that can be received *
+ */
 ServerGameUpdater.prototype.bindServerEvents = function () {
     var scope = this;
     
-    this.addBallHandler = function(data) {
-        scope.gameController.addBall(data);
-    };
-    
-    this.updateBallHandler = function(data) {
-        scope.gameController.updateBall(data);
-    };
+    // Handlers (necessary if we want to kill the listeners later ...)
+    this.addBallHandler = function(data) { scope.gameController.addBall(data); };
+    this.updateBallHandler = function(data) { scope.gameController.updateBall(data); };
+    this.addPlayerHandler = function(data) { scope.gameController.addPlayer(data, false); }
+    this.removeBallHandler = function(data) { scope.gameController.removeBall(data, false); };
+    this.updatePlayerHandler = function(data) { scope.gameController.updatePlayer(data); };
+    this.scoredHandler = function(data) { scope.gameController.onScore(data, false); };
 
-    this.addPlayerHandler = function(data) {
-        scope.gameController.addPlayer(data, false);
-    };
-    
-    this.removeBallHandler = function(data) {
-        scope.gameController.removeBall(data, false);
-    };
-    
-    this.updatePlayerHandler = function(data) {
-        scope.gameController.updatePlayer(data);
-    };
-    
-    this.scoredHandler = function(data) {
-        scope.gameController.onScore(data, false);
-    };
-
+    // Socket listeners, waiting for the other player's requests
     this.socket.on('addBall', this.addBallHandler);
     this.socket.on('updateBall', this.updateBallHandler);
     this.socket.on('addPlayer', this.addPlayerHandler);
@@ -1232,6 +1606,9 @@ ServerGameUpdater.prototype.bindServerEvents = function () {
     this.socket.on('scored', this.scoredHandler);
 };
 
+/**
+ * Function allowing to kill the socket listeners, in order to avoid sockets duplications issues *
+ */
 ServerGameUpdater.prototype.unbindServerEvents = function () {
     this.socket.removeListener('addBall', this.addBallHandler);
     this.socket.removeListener('updateBall', this.updateBallHandler);
@@ -1240,6 +1617,15 @@ ServerGameUpdater.prototype.unbindServerEvents = function () {
     this.socket.removeListener('updatePlayer', this.updatePlayerHandler);
     this.socket.removeListener('scored', this.scoredHandler);
 };
+
+/* 
+   #######################################
+   ######### REQUESTS TO SEND ############
+   #######################################
+   
+   Every function below needs to specify the request name for the server to be able to
+   treat every request the same way
+ */
 
 ServerGameUpdater.prototype.addBall= function(data) {
     data.event = 'addBall';
@@ -1278,7 +1664,7 @@ module.exports = ServerGameUpdater;
  */
 
 var serverConfig = {
-    url: "192.168.0.32",
+    url: "91.121.120.180",
     port: 9005
 }
 
@@ -1291,6 +1677,12 @@ module.exports = serverConfig;
 
 var Page = require('./Page');
 
+/**
+ * CHOOSE CHARACTER PAGE * 
+ * 
+ * Here the user decides which character he want's to play by clicking on it's picture *
+ * @constructor
+ */
 var ChooseCharacter = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
@@ -1304,6 +1696,9 @@ var ChooseCharacter = function() {
 ChooseCharacter.prototype = new Page();
 ChooseCharacter.prototype.constructor = ChooseCharacter;
 
+/**
+ *  Function called when the markup has been loaded and displayed *
+ */
 ChooseCharacter.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
 
@@ -1318,14 +1713,23 @@ ChooseCharacter.prototype.onPageDisplayed = function() {
     this.bindUiActions();
 };
 
+/**
+ * Bind User Interface Actions * 
+ */
 ChooseCharacter.prototype.bindUiActions = function() {
     this.registerCharacterChoosing();  
 };
 
+/**
+ * Unbind User Interface Actions *
+ */
 ChooseCharacter.prototype.unbindUiActions = function() {
     this.destroyCharacterChoosing();
 };
 
+/**
+ * Function listening for all the characters pictures, waiting for clicks *
+ */
 ChooseCharacter.prototype.registerCharacterChoosing = function() {
     this.characters = document.querySelectorAll('#characters-list .character');
 
@@ -1335,6 +1739,9 @@ ChooseCharacter.prototype.registerCharacterChoosing = function() {
     }
 };
 
+/**
+ * Removes the character's pictures listeners *
+ */
 ChooseCharacter.prototype.destroyCharacterChoosing = function() {
     var i;
     for(i = 0; i < this.characters.length; i++) {
@@ -1342,6 +1749,11 @@ ChooseCharacter.prototype.destroyCharacterChoosing = function() {
     }
 };
 
+/**
+ * Function called when a character is choosed by a click on it's picture *
+ * Leads to Matchmaking Page *
+ * @param e
+ */
 ChooseCharacter.prototype.chooseCharacter = function(e) {
     console.log(e);
     localStorage.setItem('PH-character', e.target.dataset.character);
@@ -1358,6 +1770,12 @@ module.exports = ChooseCharacter;
 
 var Page = require('./Page');
 
+/**
+ * GAME PAGE *
+ * 
+ * Here we first wait for the other player to be ready (if we're the host), then we jump straight into the game *
+ * @constructor
+ */
 var GamePage = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
@@ -1373,7 +1791,7 @@ GamePage.prototype = new Page();
 GamePage.prototype.constructor = GamePage;
 
 /**
- * Called when page markup is loaded *
+ * Function called when the markup has been loaded and displayed *
  */
 GamePage.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
@@ -1402,7 +1820,7 @@ GamePage.prototype.bindServerEvents = function () {
 }
 
 /**
- * When the players are ready, we notify and wait for the game launch * 
+ * When the players are ready, we notify the user and wait for the game launch *
  */
 GamePage.prototype.onOtherPlayerReady = function() {
     global.serverDialer.removeEventListener('bridge', this.onOtherPlayerReadyHandler);
@@ -1417,6 +1835,7 @@ GamePage.prototype.launchGame = function () {
     document.getElementById("controls").innerHTML = "";
     document.getElementById("message").innerHTML = "";
     
+    // We set the canvas to the game state : here we go !
     global.gameEngine.rendererController.setState('game');
 };
 
@@ -1438,6 +1857,10 @@ module.exports = GamePage;
 
 var Page = require('./Page');
 
+/**
+ * HOME PAGE *
+ * @constructor
+ */
 var HomePage = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
@@ -1445,11 +1868,13 @@ var HomePage = function() {
     this.addEventListener('pageDisplayed', this.onPageDisplayedHandler);
     this.setTemplateUrl('templates/home.html');
 };
-
 // Héritage de Page
 HomePage.prototype = new Page();
 HomePage.prototype.constructor = HomePage;
 
+/**
+ * Function called when the markup has been loaded and displayed *
+ */
 HomePage.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
     
@@ -1460,7 +1885,8 @@ HomePage.prototype.onPageDisplayed = function() {
     btnPlay.addEventListener('click', function() {
         scope.dispatchEvent({ type: 'changePage', newPage: 'TechnoPage' });
     });
-
+    
+    // Show the user's current highscore
     var highscores = document.getElementById("highscore");
     highscores.innerHTML = localStorage.getItem('PH-highscore') ? localStorage.getItem('PH-highscore') : 0;
 };
@@ -1474,8 +1900,15 @@ module.exports = HomePage;
 
 var Page = require('./Page');
 
+/**
+ * MATCHMAKING PAGE *
+ * 
+ * Here the users has the possibility to choose a gaming room or to host his own *
+ * @constructor
+ */
 var MatchmakingPage = function() {
-    // Functions handlers
+    
+    // Functions handlers (necessary if we want to kill the listeners later ...)
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
     this.populateRoomsHandler = this.populateRooms.bind(this);
     this.joinRoomHandler = this.joinRoom.bind(this);
@@ -1490,7 +1923,7 @@ MatchmakingPage.prototype = new Page();
 MatchmakingPage.prototype.constructor = MatchmakingPage;
 
 /**
- * Function called when view is ready *
+ * Function called when the markup has been loaded and displayed *
  */
 MatchmakingPage.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
@@ -1517,6 +1950,9 @@ MatchmakingPage.prototype.bindUiActions = function () {
     this.btnRefresh.addEventListener('click', this.askForRoomsHandler);
 };
 
+/**
+ * Unbind User Interface Actions*
+ */
 MatchmakingPage.prototype.unbindUiActions = function() {
     this.btnHost.removeEventListener('click', this.newHostHandler);
     this.btnRefresh.removeEventListener('click', this.askForRoomsHandler);
@@ -1607,6 +2043,13 @@ module.exports = MatchmakingPage;
  */
 var CustomEventDispatcher = require('../events/CustomEventDispatcher');
 
+/**
+ * Page class *
+ * 
+ * Each of the pages will inherit from this *
+ * Pages also need to inherit CustomEventDispatcher to allow them to dial with the PageManager *
+ * @constructor
+ */
 var Page = function() {
     this.templateUrl = '';
 }
@@ -1614,12 +2057,18 @@ var Page = function() {
 Page.prototype = new CustomEventDispatcher();
 Page.prototype.constructor = Page;
 
+/**
+ * Change the HTML template file URL *
+ * @param value
+ */
 Page.prototype.setTemplateUrl = function(value) {
     this.templateUrl = value;
     this.loadTemplate();
 }
 
-// Chargement ajax du template de la page
+/**
+ * Loads templateUrl with an XHR Ajax request and wait for it's response *
+ */
 Page.prototype.loadTemplate = function() {
     var scope = this;
     var xmlhttp;
@@ -1646,6 +2095,10 @@ Page.prototype.loadTemplate = function() {
     }
 };
 
+/**
+ * This will be called on each page changement *
+ * Need to be overriden when a page uses eventListeners *
+ */
 Page.prototype.unbindUiActions = function() {
     // Function to override !
 };
@@ -1663,13 +2116,27 @@ var MatchmakingPage = require('./MatchmakingPage');
 var ChooseCharacterPage = require('./ChooseCharacterPage');
 var GamePage = require('./GamePage');
 
+/**
+ * This is the page manager *
+ * Here we manage the pages, the transitions and the routing, manually *
+ * @param pageContainer - We have to give the DOM element in which we are going to put our pages
+ * @constructor
+ */
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
     this.changePage('HomePage');
 
+    // Start listening for any request to change the page
     global.serverDialer.addEventListener('changePage', this.onChangePageHandler);
 };
 
+/**
+ * This one allows to go from one page to another *
+ * 
+ * This function also manage the transition between pages and the unbinding of the pages listeners *
+ * In case of a GamePage, we change the canvas state (which is behind) *
+ * @param newPage
+ */
 PageManager.prototype.changePage = function(newPage) {
     var scope = this;
     
@@ -1677,9 +2144,16 @@ PageManager.prototype.changePage = function(newPage) {
     this.onTemplateLoadedHandler = this.onTemplateLoaded.bind(this);
     this.onChangePageHandler = this.onChangePage.bind(this);
     
-    if(this.currentPage) this.currentPage.unbindUiActions();
-    if(this.currentPage instanceof GamePage) global.gameEngine.rendererController.setState('idle');
+    // If there was already a page before we wanted to change, we unbind every listener
+    if(this.currentPage) {
+        this.currentPage.unbindUiActions();
 
+        // If the last page was a GamePage, we put the canvas in "Idle" state
+        if(this.currentPage instanceof GamePage) global.gameEngine.rendererController.setState('idle');
+    }
+
+    // The actual page switching
+    // We need to add any new pages here because of a browserify issue
     switch (newPage) {
         case "HomePage":
             this.currentPage = new HomePage();
@@ -1700,21 +2174,34 @@ PageManager.prototype.changePage = function(newPage) {
             this.currentPage = new HomePage();
     }
     
+    // Once we changed the page, we wait for it's template loading and for any request to change page again
     this.currentPage.addEventListener('templateLoaded', this.onTemplateLoadedHandler);
     this.currentPage.addEventListener('changePage', this.onChangePageHandler);
 };
 
+/**
+ * Function called when a page changement is requested *
+ * @param e
+ */
 PageManager.prototype.onChangePage = function (e) {
     this.changePage(e.newPage);
     //console.log('changingpage');
     this.currentPage.removeEventListener('changePage', this.onChangePageHandler);
 };
 
+/**
+ * Function called when the XHR request loaded the HTML template and is ready to show *
+ * @param e
+ */
 PageManager.prototype.onTemplateLoaded = function(e) {
     this.updateView(e.data);
     this.currentPage.removeEventListener('templateLoaded', this.onTemplateLoadedHandler);
 };
 
+/**
+ * Modifies the current template to put the currentPage's one *
+ * @param template
+ */
 PageManager.prototype.updateView = function(template) {
     this.pageContainer.classList.remove('bounceIn');
     
@@ -1735,6 +2222,13 @@ module.exports = PageManager;
 
 var Page = require('./Page');
 
+/**
+ * TECHNO PAGE *
+ * 
+ * Here the user decides of the technology he will use to play *
+ * We store that information in the localStorage to use it later *
+ * @constructor
+ */
 var TechnoPage = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
@@ -1747,12 +2241,18 @@ var TechnoPage = function() {
 TechnoPage.prototype = new Page();
 TechnoPage.prototype.constructor = TechnoPage;
 
+/**
+ * Function called when the markup has been loaded and displayed *
+ */
 TechnoPage.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
     
     this.bindUiEvents();
 };
 
+/**
+ * Event listeners management *
+ */
 TechnoPage.prototype.bindUiEvents = function() {
     var scope = this;
     var btnBack = document.getElementById("btn-back");
@@ -1763,6 +2263,9 @@ TechnoPage.prototype.bindUiEvents = function() {
     this.registerTechnoChoosing();
 };
 
+/**
+ * Here we listen for all the tech buttons in the markup *
+ */
 TechnoPage.prototype.registerTechnoChoosing = function() {
     this.chooseTechnoHandler = this.chooseTechno.bind(this);
     
@@ -1775,6 +2278,9 @@ TechnoPage.prototype.registerTechnoChoosing = function() {
     }
 };
 
+/**
+ * Destroy the tech button's listeners * 
+ */
 TechnoPage.prototype.destroyTechnoChoosing = function() {
     var numberOfTechnos = this.technoChoosers.length;
     var i;
@@ -1783,6 +2289,11 @@ TechnoPage.prototype.destroyTechnoChoosing = function() {
     }
 };
 
+/**
+ * Function called when a tech is choosed by clicking on it's button *
+ * Lead to the ChooseCharacterPage *
+ * @param e
+ */
 TechnoPage.prototype.chooseTechno = function(e) {
     console.log(e);
     localStorage.setItem('PH-tech', e.target.dataset.tech);

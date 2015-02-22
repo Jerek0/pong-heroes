@@ -4,6 +4,12 @@
 
 var Page = require('./Page');
 
+/**
+ * CHOOSE CHARACTER PAGE * 
+ * 
+ * Here the user decides which character he want's to play by clicking on it's picture *
+ * @constructor
+ */
 var ChooseCharacter = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
@@ -17,6 +23,9 @@ var ChooseCharacter = function() {
 ChooseCharacter.prototype = new Page();
 ChooseCharacter.prototype.constructor = ChooseCharacter;
 
+/**
+ *  Function called when the markup has been loaded and displayed *
+ */
 ChooseCharacter.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
 
@@ -31,14 +40,23 @@ ChooseCharacter.prototype.onPageDisplayed = function() {
     this.bindUiActions();
 };
 
+/**
+ * Bind User Interface Actions * 
+ */
 ChooseCharacter.prototype.bindUiActions = function() {
     this.registerCharacterChoosing();  
 };
 
+/**
+ * Unbind User Interface Actions *
+ */
 ChooseCharacter.prototype.unbindUiActions = function() {
     this.destroyCharacterChoosing();
 };
 
+/**
+ * Function listening for all the characters pictures, waiting for clicks *
+ */
 ChooseCharacter.prototype.registerCharacterChoosing = function() {
     this.characters = document.querySelectorAll('#characters-list .character');
 
@@ -48,6 +66,9 @@ ChooseCharacter.prototype.registerCharacterChoosing = function() {
     }
 };
 
+/**
+ * Removes the character's pictures listeners *
+ */
 ChooseCharacter.prototype.destroyCharacterChoosing = function() {
     var i;
     for(i = 0; i < this.characters.length; i++) {
@@ -55,6 +76,11 @@ ChooseCharacter.prototype.destroyCharacterChoosing = function() {
     }
 };
 
+/**
+ * Function called when a character is choosed by a click on it's picture *
+ * Leads to Matchmaking Page *
+ * @param e
+ */
 ChooseCharacter.prototype.chooseCharacter = function(e) {
     console.log(e);
     localStorage.setItem('PH-character', e.target.dataset.character);

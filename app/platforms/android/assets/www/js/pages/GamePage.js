@@ -4,6 +4,12 @@
 
 var Page = require('./Page');
 
+/**
+ * GAME PAGE *
+ * 
+ * Here we first wait for the other player to be ready (if we're the host), then we jump straight into the game *
+ * @constructor
+ */
 var GamePage = function() {
     // Functions handlers
     this.onPageDisplayedHandler = this.onPageDisplayed.bind(this);
@@ -19,7 +25,7 @@ GamePage.prototype = new Page();
 GamePage.prototype.constructor = GamePage;
 
 /**
- * Called when page markup is loaded *
+ * Function called when the markup has been loaded and displayed *
  */
 GamePage.prototype.onPageDisplayed = function() {
     this.removeEventListener('pageDisplayed', this.onPageDisplayedHandler);
@@ -29,6 +35,9 @@ GamePage.prototype.onPageDisplayed = function() {
     btnBack.addEventListener('click', function() {
         global.serverDialer.leaveRoom();
     });
+    
+    var controls = document.getElementById("controls");
+    controls.innerHTML = '<img src="img/'+localStorage.getItem('PH-tech')+'Controls.png" />';
 
     var roomNumber = document.getElementById("roomNumber");
     roomNumber.innerHTML = global.serverDialer.gameID;
@@ -45,7 +54,7 @@ GamePage.prototype.bindServerEvents = function () {
 }
 
 /**
- * When the players are ready, we notify and wait for the game launch * 
+ * When the players are ready, we notify the user and wait for the game launch *
  */
 GamePage.prototype.onOtherPlayerReady = function() {
     global.serverDialer.removeEventListener('bridge', this.onOtherPlayerReadyHandler);
@@ -57,8 +66,10 @@ GamePage.prototype.onOtherPlayerReady = function() {
  */
 GamePage.prototype.launchGame = function () {
     global.serverDialer.removeEventListener('launchGame', this.launchGameHandler);
+    document.getElementById("controls").innerHTML = "";
     document.getElementById("message").innerHTML = "";
     
+    // We set the canvas to the game state : here we go !
     global.gameEngine.rendererController.setState('game');
 };
 
