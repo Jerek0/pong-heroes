@@ -63,6 +63,8 @@ You can now go to your browser and enter the URL to /app/www/.
 ### Cordova
 *There is currently some problems with the iOS platform*
 
+**Do the Browser part just above before this**
+
 If you want to install the game on your phone as an app, here's the way to achieve it. Make sure you have cordova installed, and everything to compile in android or ios. Then, run the command :
 
     cordova platform add android
