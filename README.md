@@ -10,6 +10,7 @@ Furthermore, you will have to fight against real people, online ! You can use yo
 
 ## How to play ?
 From your browser (from any device) : http://91.121.120.180/pong-heroes/www/
+
 With the android app, download this .APK and install it on your phone : http://91.121.120.180/pong-heroes/bin/PongHeroes.apk
 
 ## Installation
