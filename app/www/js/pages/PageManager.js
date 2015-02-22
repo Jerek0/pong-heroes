@@ -10,7 +10,7 @@ var GamePage = require('./GamePage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
-    this.changePage('MatchmakingPage');
+    this.changePage('HomePage');
 
     global.serverDialer.addEventListener('changePage', this.onChangePageHandler);
 };

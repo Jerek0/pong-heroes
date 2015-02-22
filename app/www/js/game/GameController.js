@@ -8,10 +8,11 @@ var Racket = require('./entities/rackets/Racket');
 var RedFury = require('./entities/rackets/RedFury');
 var BlueFury = require('./entities/rackets/BlueFury');
 var Score = require('./entities/Score');
+var PowersBar = require('./zones/powers/PowersBar');
 var KeysManager = require('./controls/KeysManager');
 var GyroManager = require('./controls/GyroManager');
 var ServerGameUpdater = require('../network/ServerGameUpdater');
-var ScoreManager = require('./managers/ScoreManager')
+var ScoreManager = require('./managers/ScoreManager');
 
 var GameController = function () {
     
@@ -24,9 +25,12 @@ var GameController = function () {
     this.boundaries = new PIXI.Rectangle(0,0,1280,1024); // Frame collisions
 
     var background = new PIXI.Sprite.fromImage('img/background.png');
-    background.width = window.innerWidth;
-    background.height = window.innerHeight;
-    this.stage.addChild(background);
+    background.width = 1280;
+    background.height = 1024;
+    this.scene.addChild(background);
+
+    this.powersBar = new PowersBar(new PIXI.Point(window.innerWidth - 20,window.innerHeight - 48 - 20));
+    this.stage.addChild(this.powersBar);
 
     // ENTITIES
     this.balls = [];
@@ -52,7 +56,7 @@ GameController.prototype.initHost = function () {
     this.player = 0;
     
     // BALLS INIT
-    for(var i = 0; i < 16; i++) {
+    for(var i = 0; i < 1; i++) {
         this.addBall({
             x: (this.scene.baseWidth / 2),
             y: (this.scene.baseHeight / 2)
@@ -67,6 +71,8 @@ GameController.prototype.initHost = function () {
         y: this.scene.baseHeight/2
     }, true);
     
+    this.powersBar.addPower(this.players[this.player].powerName);
+    
     this.initControls();
 };
 
@@ -80,6 +86,8 @@ GameController.prototype.initClient = function () {
         x: this.scene.baseWidth - 100,
         y: this.scene.baseHeight / 2
     }, true);
+
+    this.powersBar.addPower(this.players[this.player].powerName);
 
     this.initControls();
 };
@@ -253,6 +261,8 @@ GameController.prototype.destroyPlayersListeners = function () {
 };
 
 GameController.prototype.addBallFromPlayer = function(index) {
+    this.powersBar.powers[0].coolDown();
+    
     this.addBall({
         x: (this.players[index].position.x < 640) ? this.players[index].position.x + this.players[index].width : this.players[index].position.x,
         y: this.players[index].position.y + (this.players[index].height / 2),
@@ -262,6 +272,8 @@ GameController.prototype.addBallFromPlayer = function(index) {
 
 GameController.prototype.reverseBallsAngles = function () {
     var i, numberOfBalls = this.balls.length;
+
+    this.powersBar.powers[0].coolDown();
     
     for(i = 0; i < numberOfBalls; i++) {
         this.balls[i].position.deltaY *= -1;

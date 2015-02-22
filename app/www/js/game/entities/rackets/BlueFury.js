@@ -13,6 +13,8 @@ var BlueFury = function(position) {
     this.acceleration = 1;
     this.friction = 0.95;
 
+    this.powerName = 'reverseBallsAngles';
+
     this.removeChild(this.graphics);
 
     this.graphics = new PIXI.Sprite.fromImage('img/hero2.png');
@@ -23,9 +25,5 @@ var BlueFury = function(position) {
 };
 BlueFury.prototype = Object.create(Racket.prototype);
 BlueFury.prototype.constructor = BlueFury;
-
-BlueFury.prototype.firstPower = function () {
-    this.dispatchEvent('reverseBallsAngles');
-};
 
 module.exports = BlueFury;

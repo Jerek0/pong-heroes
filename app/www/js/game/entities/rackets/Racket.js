@@ -56,7 +56,7 @@ Racket.prototype.faceTheRightWay = function () {
 };
 
 Racket.prototype.firstPower = function () {
-    console.log('firstPower');
+    this.dispatchEvent(this.powerName);
 };
 
 module.exports = Racket;

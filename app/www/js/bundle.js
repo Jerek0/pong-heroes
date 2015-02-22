@@ -41,7 +41,7 @@ var app = {
 
 app.initialize();
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./game/RendererController":5,"./network/ServerDialer":16,"./pages/PageManager":24}],2:[function(require,module,exports){
+},{"./game/RendererController":5,"./network/ServerDialer":18,"./pages/PageManager":26}],2:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -95,10 +95,11 @@ var Racket = require('./entities/rackets/Racket');
 var RedFury = require('./entities/rackets/RedFury');
 var BlueFury = require('./entities/rackets/BlueFury');
 var Score = require('./entities/Score');
+var PowersBar = require('./zones/powers/PowersBar');
 var KeysManager = require('./controls/KeysManager');
 var GyroManager = require('./controls/GyroManager');
 var ServerGameUpdater = require('../network/ServerGameUpdater');
-var ScoreManager = require('./managers/ScoreManager')
+var ScoreManager = require('./managers/ScoreManager');
 
 var GameController = function () {
     
@@ -111,9 +112,12 @@ var GameController = function () {
     this.boundaries = new PIXI.Rectangle(0,0,1280,1024); // Frame collisions
 
     var background = new PIXI.Sprite.fromImage('img/background.png');
-    background.width = window.innerWidth;
-    background.height = window.innerHeight;
-    this.stage.addChild(background);
+    background.width = 1280;
+    background.height = 1024;
+    this.scene.addChild(background);
+
+    this.powersBar = new PowersBar(new PIXI.Point(window.innerWidth - 20,window.innerHeight - 48 - 20));
+    this.stage.addChild(this.powersBar);
 
     // ENTITIES
     this.balls = [];
@@ -139,7 +143,7 @@ GameController.prototype.initHost = function () {
     this.player = 0;
     
     // BALLS INIT
-    for(var i = 0; i < 16; i++) {
+    for(var i = 0; i < 1; i++) {
         this.addBall({
             x: (this.scene.baseWidth / 2),
             y: (this.scene.baseHeight / 2)
@@ -154,6 +158,8 @@ GameController.prototype.initHost = function () {
         y: this.scene.baseHeight/2
     }, true);
     
+    this.powersBar.addPower(this.players[this.player].powerName);
+    
     this.initControls();
 };
 
@@ -167,6 +173,8 @@ GameController.prototype.initClient = function () {
         x: this.scene.baseWidth - 100,
         y: this.scene.baseHeight / 2
     }, true);
+
+    this.powersBar.addPower(this.players[this.player].powerName);
 
     this.initControls();
 };
@@ -340,6 +348,8 @@ GameController.prototype.destroyPlayersListeners = function () {
 };
 
 GameController.prototype.addBallFromPlayer = function(index) {
+    this.powersBar.powers[0].coolDown();
+    
     this.addBall({
         x: (this.players[index].position.x < 640) ? this.players[index].position.x + this.players[index].width : this.players[index].position.x,
         y: this.players[index].position.y + (this.players[index].height / 2),
@@ -349,6 +359,8 @@ GameController.prototype.addBallFromPlayer = function(index) {
 
 GameController.prototype.reverseBallsAngles = function () {
     var i, numberOfBalls = this.balls.length;
+
+    this.powersBar.powers[0].coolDown();
     
     for(i = 0; i < numberOfBalls; i++) {
         this.balls[i].position.deltaY *= -1;
@@ -414,7 +426,7 @@ GameController.prototype.onResize = function () {
 
 module.exports = GameController;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"../network/ServerGameUpdater":17,"./StateController":6,"./controls/GyroManager":7,"./controls/KeysManager":8,"./entities/Ball":9,"./entities/Score":10,"./entities/rackets/BlueFury":11,"./entities/rackets/Racket":12,"./entities/rackets/RedFury":13,"./managers/ScoreManager":14,"./zones/Scene":15}],4:[function(require,module,exports){
+},{"../network/ServerGameUpdater":19,"./StateController":6,"./controls/GyroManager":7,"./controls/KeysManager":8,"./entities/Ball":9,"./entities/Score":10,"./entities/rackets/BlueFury":11,"./entities/rackets/Racket":12,"./entities/rackets/RedFury":13,"./managers/ScoreManager":14,"./zones/Scene":15,"./zones/powers/PowersBar":17}],4:[function(require,module,exports){
 /**
  * Created by jerek0 on 14/02/2015.
  */
@@ -551,8 +563,6 @@ GyroManager.prototype.bindOrientation = function (e) {
     if(percentage > 1) percentage = 1;
     else if( percentage < -1) percentage = -1;
     
-    console.log(percentage);
-    
     this.racket.position.deltaY += this.racket.acceleration * 4 * percentage;
 };
 
@@ -640,7 +650,7 @@ KeysManager.prototype.update = function () {
     if(this.keyMap.up) this.racket.position.deltaY += -this.racket.acceleration;
     if(this.keyMap.down) this.racket.position.deltaY += this.racket.acceleration;
     
-    if(this.keyMap.firstPower && !this.launchingPower && ((Date.now() - this.lastPowerLaunch) > 300)) {
+    if(this.keyMap.firstPower && !this.launchingPower && ((Date.now() - this.lastPowerLaunch) > 3000)) {
         this.racket.firstPower();
         this.keyMap.firstPower = false;
         this.launchingPower = true;
@@ -828,6 +838,8 @@ var BlueFury = function(position) {
     this.acceleration = 1;
     this.friction = 0.95;
 
+    this.powerName = 'reverseBallsAngles';
+
     this.removeChild(this.graphics);
 
     this.graphics = new PIXI.Sprite.fromImage('img/hero2.png');
@@ -838,10 +850,6 @@ var BlueFury = function(position) {
 };
 BlueFury.prototype = Object.create(Racket.prototype);
 BlueFury.prototype.constructor = BlueFury;
-
-BlueFury.prototype.firstPower = function () {
-    this.dispatchEvent('reverseBallsAngles');
-};
 
 module.exports = BlueFury;
 },{"./Racket":12}],12:[function(require,module,exports){
@@ -903,7 +911,7 @@ Racket.prototype.faceTheRightWay = function () {
 };
 
 Racket.prototype.firstPower = function () {
-    console.log('firstPower');
+    this.dispatchEvent(this.powerName);
 };
 
 module.exports = Racket;
@@ -917,6 +925,8 @@ var RedFury = function(position) {
     Racket.call(this, position);
     
     this.acceleration = 3;
+    
+    this.powerName = 'duplicateBall';
 
     this.removeChild(this.graphics);
     
@@ -928,11 +938,6 @@ var RedFury = function(position) {
 };
 RedFury.prototype = Object.create(Racket.prototype);
 RedFury.prototype.constructor = RedFury;
-
-RedFury.prototype.firstPower = function () {
-    console.log('duplicateBalls');
-    this.dispatchEvent('duplicateBall');
-};
 
 
 module.exports = RedFury;
@@ -980,6 +985,60 @@ Scene.prototype.constructor = Scene;
 
 module.exports = Scene;
 },{}],16:[function(require,module,exports){
+/**
+ * Created by jerek0 on 22/02/2015.
+ */
+
+var PowerButton = function (powerName) {
+    PIXI.DisplayObjectContainer.call( this );
+    
+    this.powerVisual = new PIXI.Sprite.fromImage('img/'+powerName+'.png');
+    this.powerVisual.width = 48;
+    this.powerVisual.height = 48;
+    this.addChild(this.powerVisual);
+};
+PowerButton.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
+PowerButton.prototype.constructor = PowerButton;
+
+PowerButton.prototype.coolDown = function() {
+    this.powerVisual.alpha = 0.2;
+    
+    var scope = this;
+    setTimeout(function() {
+        scope.powerVisual.alpha = 1;
+    }, 3000);
+}
+
+module.exports = PowerButton;
+},{}],17:[function(require,module,exports){
+/**
+ * Created by jerek0 on 22/02/2015.
+ */
+    
+var PowerButton = require('./PowerButton');
+
+var PowersBar = function (position) {
+    PIXI.DisplayObjectContainer.call( this );
+    
+    this.position.x = position.x;
+    this.position.y = position.y;
+    
+    this.powers = [];    
+};
+PowersBar.prototype = Object.create(PIXI.DisplayObjectContainer.prototype);
+PowersBar.prototype.constructor = PowersBar;
+
+PowersBar.prototype.addPower = function (powerName) {
+    var power = new PowerButton(powerName);
+    this.powers.push(power);
+    this.powers[this.powers.length - 1].x = this.powers.length * this.powers[this.powers.length - 1].width;
+    this.powers[this.powers.length - 1].x *= -1;
+    this.powers[this.powers.length - 1].coolDown();
+    this.addChild(this.powers[this.powers.length - 1]);
+};
+
+module.exports = PowersBar;
+},{"./PowerButton":16}],18:[function(require,module,exports){
 /**
  * Created by jerek0 on 10/02/2015.
  */
@@ -1119,7 +1178,7 @@ ServerDialer.prototype.leaveRoom = function() {
 };
 
 module.exports = ServerDialer;
-},{"../events/CustomEventDispatcher":2,"./serverConfig":18}],17:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2,"./serverConfig":20}],19:[function(require,module,exports){
 /**
  * Created by jerek0 on 14/02/2015.
  */
@@ -1210,7 +1269,7 @@ ServerGameUpdater.prototype.scored = function (data) {
 }
 
 module.exports = ServerGameUpdater;
-},{"../events/CustomEventDispatcher":2}],18:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],20:[function(require,module,exports){
 /**
  * Created by jerek0 on 10/02/2015.
  */
@@ -1221,7 +1280,7 @@ var serverConfig = {
 }
 
 module.exports = serverConfig;
-},{}],19:[function(require,module,exports){
+},{}],21:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -1288,7 +1347,7 @@ ChooseCharacter.prototype.chooseCharacter = function(e) {
 
 module.exports = ChooseCharacter;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":23}],20:[function(require,module,exports){
+},{"./Page":25}],22:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 13/02/2015.
@@ -1365,7 +1424,7 @@ GamePage.prototype.unbindUiActions = function() {
 module.exports = GamePage;
 
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":23}],21:[function(require,module,exports){
+},{"./Page":25}],23:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -1400,7 +1459,7 @@ HomePage.prototype.onPageDisplayed = function() {
 };
 
 module.exports = HomePage;
-},{"./Page":23}],22:[function(require,module,exports){
+},{"./Page":25}],24:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 09/02/2015.
@@ -1535,7 +1594,7 @@ MatchmakingPage.prototype.hostRoom = function() {
 
 module.exports = MatchmakingPage;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./Page":23}],23:[function(require,module,exports){
+},{"./Page":25}],25:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -1585,7 +1644,7 @@ Page.prototype.unbindUiActions = function() {
 };
 
 module.exports = Page;
-},{"../events/CustomEventDispatcher":2}],24:[function(require,module,exports){
+},{"../events/CustomEventDispatcher":2}],26:[function(require,module,exports){
 (function (global){
 /**
  * Created by jerek0 on 08/02/2015.
@@ -1599,7 +1658,7 @@ var GamePage = require('./GamePage');
 
 var PageManager = function(pageContainer) {
     this.pageContainer = pageContainer;
-    this.changePage('MatchmakingPage');
+    this.changePage('HomePage');
 
     global.serverDialer.addEventListener('changePage', this.onChangePageHandler);
 };
@@ -1662,7 +1721,7 @@ PageManager.prototype.updateView = function(template) {
 
 module.exports = PageManager;
 }).call(this,typeof global !== "undefined" ? global : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : {})
-},{"./ChooseCharacterPage":19,"./GamePage":20,"./HomePage":21,"./MatchmakingPage":22,"./TechnoPage":25}],25:[function(require,module,exports){
+},{"./ChooseCharacterPage":21,"./GamePage":22,"./HomePage":23,"./MatchmakingPage":24,"./TechnoPage":27}],27:[function(require,module,exports){
 /**
  * Created by jerek0 on 08/02/2015.
  */
@@ -1725,4 +1784,4 @@ TechnoPage.prototype.chooseTechno = function(e) {
 };
 
 module.exports = TechnoPage;
-},{"./Page":23}]},{},[1]);
+},{"./Page":25}]},{},[1]);

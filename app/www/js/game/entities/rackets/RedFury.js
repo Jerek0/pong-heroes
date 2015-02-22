@@ -7,6 +7,8 @@ var RedFury = function(position) {
     Racket.call(this, position);
     
     this.acceleration = 3;
+    
+    this.powerName = 'duplicateBall';
 
     this.removeChild(this.graphics);
     
@@ -18,11 +20,6 @@ var RedFury = function(position) {
 };
 RedFury.prototype = Object.create(Racket.prototype);
 RedFury.prototype.constructor = RedFury;
-
-RedFury.prototype.firstPower = function () {
-    console.log('duplicateBalls');
-    this.dispatchEvent('duplicateBall');
-};
 
 
 module.exports = RedFury;
