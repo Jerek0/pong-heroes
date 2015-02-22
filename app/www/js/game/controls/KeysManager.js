@@ -63,7 +63,7 @@ KeysManager.prototype.update = function () {
     if(this.keyMap.up) this.racket.position.deltaY += -this.racket.acceleration;
     if(this.keyMap.down) this.racket.position.deltaY += this.racket.acceleration;
     
-    if(this.keyMap.firstPower && !this.launchingPower && ((Date.now() - this.lastPowerLaunch) > 300)) {
+    if(this.keyMap.firstPower && !this.launchingPower && ((Date.now() - this.lastPowerLaunch) > 3000)) {
         this.racket.firstPower();
         this.keyMap.firstPower = false;
         this.launchingPower = true;

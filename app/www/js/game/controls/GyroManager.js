@@ -25,8 +25,6 @@ GyroManager.prototype.bindOrientation = function (e) {
     if(percentage > 1) percentage = 1;
     else if( percentage < -1) percentage = -1;
     
-    console.log(percentage);
-    
     this.racket.position.deltaY += this.racket.acceleration * 4 * percentage;
 };
 
